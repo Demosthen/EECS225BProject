@@ -20,7 +20,7 @@ from utils.common_utils import *
 from SSIM import SSIM
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--num_iter', type=int, default=5000,
+parser.add_argument('--num_iter', type=int, default=10,
                     help='number of epochs of training')
 parser.add_argument('--img_size', type=int,
                     default=[256, 256], help='size of each image dimension')
