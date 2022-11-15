@@ -4,7 +4,7 @@
 - Python 3.6, PyTorch >= 0.4 
 - Requirements: opencv-python, tqdm
 - Platforms: Windows, [GPU/CPU NAME]
-- Install the prerequisites with
+- To install the dependencies:
 ```bash
 pip install requirements.txt
 ```
@@ -24,5 +24,5 @@ python selfdeblur_nonblind.py --data_path path_to_blurry --save_path path_to_est
 ```
 
 ## Resources
-https://github.com/csdwren/SelfDeblur 
-https://github.com/chrhenning/hypnettorch
+- https://github.com/csdwren/SelfDeblur 
+- https://github.com/chrhenning/hypnettorch
