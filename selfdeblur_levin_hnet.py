@@ -29,12 +29,16 @@ parser.add_argument('--kernel_size', type=int, default=[21, 21], help='size of b
 parser.add_argument('--data_path', type=str, default="datasets/levin/", help='path to blurry image')
 parser.add_argument('--save_path', type=str, default="results/levin/hnet_models/", help='path to save results')
 parser.add_argument('--save_frequency', type=int, default=100, help='lfrequency to save results')
+parser.add_argument('--use_gpu', action="store_true", help="whether or not to use gpu")
 opt = parser.parse_args()
 #print(opt)
 
-torch.backends.cudnn.enabled = True
-torch.backends.cudnn.benchmark =True
-dtype = torch.cuda.FloatTensor
+torch.backends.cudnn.enabled = opt.use_gpu
+torch.backends.cudnn.benchmark = opt.use_gpu
+if opt.use_gpu:
+    dtype = torch.cuda.FloatTensor
+else:
+    dtype = torch.FloatTensor
 
 warnings.filterwarnings("ignore")
 
@@ -43,12 +47,14 @@ files_source.sort()
 save_path = opt.save_path
 os.makedirs(save_path, exist_ok=True)
 
-net = HyperDip(3, 1,
+input_depth = 8
+
+net = HyperDip(input_depth, 1,
                 num_channels_down = [128, 128, 128, 128, 128],
                 num_channels_up   = [128, 128, 128, 128, 128],
                 num_channels_skip = [16, 16, 16, 16, 16],
                 upsample_mode='bilinear',
-                need_sigmoid=True, need_bias=True, pad='reflection', act_fun='LeakyReLU').cuda()
+                need_sigmoid=True, need_bias=True, pad='reflection', act_fun='LeakyReLU')
 
 hnet = HyperNetwork(net)
 
@@ -96,7 +102,7 @@ for f in files_source:
     '''
     x_net:
     '''
-    input_depth = 8
+    
 
     net_input = get_noise(input_depth, INPUT, (opt.img_size[0], opt.img_size[1])).type(dtype)
 
@@ -122,6 +128,7 @@ for f in files_source:
     net_input_saved = net_input.detach().clone()
     net_input_kernel_saved = net_input_kernel.detach().clone()
 
+    img = torch.tensor(imgs).type(dtype).expand(1, 3, -1, -1)
     ### start SelfDeblur
     for step in tqdm(range(num_iter)):
 
@@ -133,7 +140,7 @@ for f in files_source:
         optimizer.zero_grad()
 
         # get the network output
-        weights = hnet(net_input)
+        weights = hnet(img)
         out_x = net(net_input, weights=weights)
         out_k = net_kernel(net_input_kernel)
     

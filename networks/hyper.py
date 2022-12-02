@@ -18,8 +18,9 @@ class HyperNetwork(nn.Module):
         x = self.feature_extractor.bn1(x)
         x = self.feature_extractor.relu(x)
         x = self.feature_extractor.maxpool(x)
-        x = self.feature_extractor.layer1(x) + x
-        x = self.feature_extractor.layer2(x) + x
+
+        x = self.feature_extractor.layer1(x)
+        x = self.feature_extractor.layer2(x)
         x = self.feature_extractor.avgpool(x)
         # Flatten x
         x = x[:, -1]
@@ -50,7 +51,7 @@ class HyperDip(MainNetInterface, nn.Module):
         self._has_bias = need_bias
         self._has_fc_out = False
         self._mask_fc_out = False
-        self._has_linear_out = need_sigmoid
+        self._has_linear_out = not need_sigmoid
         
         
     def _replace_batch_norm_layers(self):
