@@ -8,11 +8,11 @@ from hypnettorch.hnets.chunked_mlp_hnet import ChunkedHMLP
 from torchvision.models import resnet18
 
 class HyperNetwork(nn.Module):
-    def __init__(self, net, chunk_size = 16384, layers=(128, 128, 128)) -> None:
+    def __init__(self, net, chunk_size = 16384, layers=(128, 128, 128), freeze_feature_extractor=True) -> None:
         super().__init__()
         self.feature_extractor = resnet18(pretrained=True)
+        self.feature_extractor.requires_grad_ = not freeze_feature_extractor
         self.hnet = ChunkedHMLP(net.hyper_shapes_learned, chunk_size, layers=layers, use_batch_norm=True, cond_in_size=512)
-        
     def forward(self, x):
         x = self.feature_extractor.conv1(x)
         x = self.feature_extractor.bn1(x)

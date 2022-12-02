@@ -65,7 +65,7 @@ net = net.type(dtype)
 for f in files_source:
     INPUT = 'noise'
     pad = 'reflection'
-    LR = 0.01
+    LR = 1e-4
     num_iter = opt.num_iter
     reg_noise_std = 0.001
 
@@ -121,7 +121,7 @@ for f in files_source:
     ssim = SSIM().type(dtype)
 
     # optimizer
-    optimizer = torch.optim.Adam([{'params':net.parameters()},{'params':net_kernel.parameters(),'lr':1e-4}, {'params':hnet.parameters()}], lr=LR)
+    optimizer = torch.optim.Adam([{'params': net.parameters()}, {'params':net_kernel.parameters(),'lr':1e-4}, {'params':hnet.hnet.internal_params}], lr=LR)
     scheduler = MultiStepLR(optimizer, milestones=[2000, 3000, 4000], gamma=0.5)  # learning rates
 
     # initilization inputs
