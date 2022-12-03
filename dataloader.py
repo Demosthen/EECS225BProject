@@ -1,9 +1,11 @@
+import matplotlib.pyplot as plt
 from torchvision.datasets.folder import default_loader
 from torchvision.datasets.vision import VisionDataset
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 from torchvision.transforms import ToTensor
 import os
+
 
 def make_dataset(root: str) -> list:
     """Reads a directory with data.
@@ -15,12 +17,12 @@ def make_dataset(root: str) -> list:
     gt_dir = 'gt'
     rgb_fnames = sorted(os.listdir(os.path.join(root, rgb_dir)))
     for gt_fname in sorted(os.listdir(os.path.join(root, gt_dir))):
-            if gt_fname in rgb_fnames:
-                # if we have a match, create pair of full paths and append
-                rgb_path = os.path.join(root, rgb_dir, gt_fname)
-                gt_path = os.path.join(root, gt_dir, gt_fname)
-                item = (rgb_path, gt_path)
-                dataset.append(item)
+        if gt_fname in rgb_fnames:
+            # if we have a match, create pair of full paths and append
+            rgb_path = os.path.join(root, rgb_dir, gt_fname)
+            gt_path = os.path.join(root, gt_dir, gt_fname)
+            item = (rgb_path, gt_path)
+            dataset.append(item)
     return dataset
 
 
@@ -44,8 +46,8 @@ class InputGTDataset(VisionDataset):
         if self.transform is not None:
             rgb_sample = self.transform(rgb_sample)
         if self.target_transform is not None:
-            gt_sample = self.target_transform(gt_sample)      
-        return rgb_sample, gt_sample
+            gt_sample = self.target_transform(gt_sample)
+        return rgb_sample, gt_sample, rgb_path
 
     def __len__(self):
         return len(self.samples)
@@ -53,16 +55,18 @@ class InputGTDataset(VisionDataset):
 
 def get_dataloader(root: str, batch_size: int, shuffle: bool):
     transforms = ToTensor()
-    dataset = InputGTDataset(root, input_transform=transforms, gt_transform=transforms)
+    dataset = InputGTDataset(
+        root, input_transform=transforms, gt_transform=transforms)
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
-# import matplotlib.pyplot as plt
-
-# dataloader = get_dataloader("datasets/test_data_loader/", batch_size=4, shuffle=True)
-# for i, (rgb, gt) in enumerate(dataloader):
+# dataloader = get_dataloader(
+#     "datasets/test_data_loader/", batch_size=4, shuffle=True)
+# print(dataloader.dataset.rgb_samples) # not sorted to batches
+# for i, (rgb, gt, rgb_path) in enumerate(dataloader):
 #     print(i)
 #     for i in range(4):
+#         # print(rgb_path)
 #         plt.figure(figsize=(10, 5))
 #         plt.subplot(221)
 #         plt.imshow(rgb[i].squeeze().permute(1, 2, 0))
