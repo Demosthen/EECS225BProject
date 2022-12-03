@@ -31,9 +31,9 @@ opt = parser.parse_args()
 if isinstance(opt.kernel_size, int):
     opt.kernel_size = [opt.kernel_size, opt.kernel_size]
 
-torch.backends.cudnn.enabled = True
-torch.backends.cudnn.benchmark =True
-dtype = torch.cuda.FloatTensor
+torch.backends.cudnn.enabled = False
+torch.backends.cudnn.benchmark =False
+dtype = torch.FloatTensor
 
 warnings.filterwarnings("ignore")
 
