@@ -31,8 +31,12 @@ parser.add_argument('--save_path', type=str,
                     default="results/levin/hnet_models/", help='path to save results')
 parser.add_argument('--save_frequency', type=int,
                     default=100, help='lfrequency to save results')
+parser.add_argument('--ignore_hard_kernel_size', action="store_true",
+                    help="whether to use hardcoded kernel sizes or not")
 opt = parser.parse_args()
 # print(opt)
+if isinstance(opt.kernel_size, int):
+    opt.kernel_size = [opt.kernel_size, opt.kernel_size]
 
 torch.backends.cudnn.enabled = True
 torch.backends.cudnn.benchmark = True
@@ -57,22 +61,23 @@ for f in files_source:
     imgname = os.path.basename(f)
     imgname = os.path.splitext(imgname)[0]
 
-    if imgname.find('kernel1') != -1:
-        opt.kernel_size = [17, 17]
-    if imgname.find('kernel2') != -1:
-        opt.kernel_size = [15, 15]
-    if imgname.find('kernel3') != -1:
-        opt.kernel_size = [13, 13]
-    if imgname.find('kernel4') != -1:
-        opt.kernel_size = [27, 27]
-    if imgname.find('kernel5') != -1:
-        opt.kernel_size = [11, 11]
-    if imgname.find('kernel6') != -1:
-        opt.kernel_size = [19, 19]
-    if imgname.find('kernel7') != -1:
-        opt.kernel_size = [21, 21]
-    if imgname.find('kernel8') != -1:
-        opt.kernel_size = [21, 21]
+    if not opt.ignore_hard_kernel_size:
+        if imgname.find('kernel1') != -1:
+            opt.kernel_size = [17, 17]
+        if imgname.find('kernel2') != -1:
+            opt.kernel_size = [15, 15]
+        if imgname.find('kernel3') != -1:
+            opt.kernel_size = [13, 13]
+        if imgname.find('kernel4') != -1:
+            opt.kernel_size = [27, 27]
+        if imgname.find('kernel5') != -1:
+            opt.kernel_size = [11, 11]
+        if imgname.find('kernel6') != -1:
+            opt.kernel_size = [19, 19]
+        if imgname.find('kernel7') != -1:
+            opt.kernel_size = [21, 21]
+        if imgname.find('kernel8') != -1:
+            opt.kernel_size = [21, 21]
 
     _, imgs = get_image(path_to_image, -1)  # load image and convert to np.
     y = np_to_torch(imgs).type(dtype)
