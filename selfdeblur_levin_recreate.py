@@ -17,6 +17,7 @@ from tqdm import tqdm
 from torch.optim.lr_scheduler import MultiStepLR
 from utils.common_utils import *
 from SSIM import SSIM
+from SelfDeblur import SelfDeblurImage, SelfDeblurKernel
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--num_iter', type=int, default=5000, help='number of epochs of training')
@@ -30,6 +31,7 @@ opt = parser.parse_args()
 
 torch.backends.cudnn.enabled = False
 torch.backends.cudnn.benchmark =False
+
 dtype = torch.FloatTensor
 
 warnings.filterwarnings("ignore")
@@ -84,14 +86,14 @@ for f in files_source:
 
     net_input = get_noise(input_depth, INPUT, (opt.img_size[0], opt.img_size[1])).type(dtype)
 
-    net = skip( input_depth, 1,
-                num_channels_down = [128, 128, 128, 128, 128],
-                num_channels_up   = [128, 128, 128, 128, 128],
-                num_channels_skip = [16, 16, 16, 16, 16],
-                upsample_mode='bilinear',
-                need_sigmoid=True, need_bias=True, pad=pad, act_fun='LeakyReLU')
+    # net = skip( input_depth, 1,
+    #             num_channels_down = [128, 128, 128, 128, 128],
+    #             num_channels_up   = [128, 128, 128, 128, 128],
+    #             num_channels_skip = [16, 16, 16, 16, 16],
+    #             upsample_mode='bilinear',
+    #             need_sigmoid=True, need_bias=True, pad=pad, act_fun='LeakyReLU')
 
-    net = net.type(dtype)
+    # net = net.type(dtype)
 
     '''
     k_net:
@@ -100,21 +102,24 @@ for f in files_source:
     net_input_kernel = get_noise(n_k, INPUT, (1, 1)).type(dtype)
     net_input_kernel.squeeze_()
 
-    net_kernel = fcn(n_k, opt.kernel_size[0]*opt.kernel_size[1])
-    net_kernel = net_kernel.type(dtype)
+    # net_kernel = fcn(n_k, opt.kernel_size[0]*opt.kernel_size[1])
+    # net_kernel = net_kernel.type(dtype)
+
+    net = SelfDeblurImage(input_depth=input_depth, pad=pad, dtype=dtype)
+    net_kernel = SelfDeblurKernel(dtype=dtype, n_k=n_k, kernel_shape=opt.kernel_size)
 
     # Losses
     mse = torch.nn.MSELoss().type(dtype)
     ssim = SSIM().type(dtype)
 
     # optimizer
-    optimizer = torch.optim.Adam([{'params':net.parameters()},{'params':net_kernel.parameters(),'lr':1e-4}], lr=LR)
+    optimizer = torch.optim.Adam([{'params':net.model.parameters()},{'params':net_kernel.model.parameters(),'lr':1e-4}], lr=LR)
     scheduler = MultiStepLR(optimizer, milestones=[2000, 3000, 4000], gamma=0.5)  # learning rates
 
     # initilization inputs
     net_input_saved = net_input.detach().clone()
     net_input_kernel_saved = net_input_kernel.detach().clone()
-    
+
     ### start SelfDeblur
     for step in tqdm(range(num_iter)):
 
@@ -126,8 +131,10 @@ for f in files_source:
         optimizer.zero_grad()
 
         # get the network output
-        out_x = net(net_input)
-        out_k = net_kernel(net_input_kernel)
+        # out_x = net(net_input)
+        # out_k = net_kernel(net_input_kernel)
+        out_x = net.forward(net_input)
+        out_k = net_kernel.forward(net_input_kernel)
     
         out_k_m = out_k.view(-1,1,opt.kernel_size[0],opt.kernel_size[1])
         # print(out_k_m)
@@ -156,5 +163,5 @@ for f in files_source:
             out_k_np /= np.max(out_k_np)
             imsave(save_path, out_k_np)
 
-            torch.save(net, os.path.join(opt.save_path, "%s_xnet.pth" % imgname))
-            torch.save(net_kernel, os.path.join(opt.save_path, "%s_knet.pth" % imgname))
+            torch.save(net.model, os.path.join(opt.save_path, "%s_xnet.pth" % imgname))
+            torch.save(net_kernel.model, os.path.join(opt.save_path, "%s_knet.pth" % imgname))
