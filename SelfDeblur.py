@@ -46,15 +46,13 @@ class SelfDeblurImage(MainNetInterface, nn.Module):
         self._batchnorm_layers = nn.ModuleList(self._batchnorm_layers)
 
     def forward(self, x: tuple, weights=None, distilled_params=None, condition=None):
-        # i = 0
-        # if weights != None:
-        #     for module in self.model.modules():
-        #         if hasattr(module, "weight"):
-        #             module.weight = nn.Parameter(weights[i], requires_grad=True)
-        #             module.bias = nn.Parameter(weights[len(self.layer_weight_tensors) + i], requires_grad=True)
-        #             i += 1
+        i = 0
         if weights != None:
-            return self.model(x, weights)
+            for module in self.model.modules():
+                if hasattr(module, "weight"):
+                    module.weight = nn.Parameter(weights[i], requires_grad=True)
+                    module.bias = nn.Parameter(weights[len(self.layer_weight_tensors) + i], requires_grad=True)
+                    i += 1
         else:
             return self.model(x)
 
@@ -98,15 +96,13 @@ class SelfDeblurKernel(MainNetInterface, nn.Module):
         self._batchnorm_layers = nn.ModuleList(self._batchnorm_layers)
 
     def forward(self, x: tuple, weights=None, distilled_params=None, condition=None):
-        # i = 0
-        # if weights != None:
-        #     for module in self.model.modules():
-        #         if hasattr(module, "weight"):
-        #             module.weight = nn.Parameter(weights[i], requires_grad=True)
-        #             module.bias = nn.Parameter(weights[len(self.layer_weight_tensors) + i], requires_grad=True)
-        #             i += 1
+        i = 0
         if weights != None:
-            return self.model(x, weights)
+            for module in self.model.modules():
+                if hasattr(module, "weight"):
+                    module.weight = nn.Parameter(weights[i], requires_grad=True)
+                    module.bias = nn.Parameter(weights[len(self.layer_weight_tensors) + i], requires_grad=True)
+                    i += 1
         else:
             return self.model(x)
 

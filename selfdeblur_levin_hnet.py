@@ -17,6 +17,7 @@ from tqdm import tqdm
 from torch.optim.lr_scheduler import MultiStepLR
 from utils.common_utils import *
 from SSIM import SSIM
+from SelfDeblur import SelfDeblurImage, SelfDeblurKernel
 from hypnettorch.hnets.structured_hmlp_examples import resnet_chunking
 from hypnettorch.hnets import StructuredHMLP
 from hypnettorch.mnets import ResNet
@@ -113,15 +114,17 @@ for f in files_source:
     net_input_kernel = get_noise(n_k, INPUT, (1, 1)).type(dtype)
     net_input_kernel.squeeze_()
 
-    net_kernel = fcn(n_k, opt.kernel_size[0]*opt.kernel_size[1])
-    net_kernel = net_kernel.type(dtype)
+    # net_kernel = fcn(n_k, opt.kernel_size[0]*opt.kernel_size[1])
+    # net_kernel = net_kernel.type(dtype)
+    net = SelfDeblurImage(input_depth=input_depth, pad=pad, dtype=dtype)
+    net_kernel = SelfDeblurKernel(dtype=dtype, n_k=n_k, kernel_shape=opt.kernel_size)
 
     # Losses
     mse = torch.nn.MSELoss().type(dtype)
     ssim = SSIM().type(dtype)
 
     # optimizer
-    optimizer = torch.optim.Adam([{'params': net.parameters()}, {'params':net_kernel.parameters(),'lr':1e-4}, {'params':hnet.hnet.internal_params}], lr=LR)
+    optimizer = torch.optim.Adam([{'params':net.model.parameters()},{'params':net_kernel.model.parameters(),'lr':1e-4}], lr=LR)
     scheduler = MultiStepLR(optimizer, milestones=[2000, 3000, 4000], gamma=0.5)  # learning rates
 
     # initilization inputs
@@ -141,11 +144,12 @@ for f in files_source:
 
         # get the network output
         weights = hnet(img)
-        out_x = net(net_input, weights=weights)
-        out_k = net_kernel(net_input_kernel)
+        # out_x = net(net_input, weights=weights)
+        # out_k = net_kernel(net_input_kernel)
+        out_x = net.forward(net_input)
+        out_k = net_kernel.forward(net_input_kernel)
     
         out_k_m = out_k.view(-1,1,opt.kernel_size[0],opt.kernel_size[1])
-        # print(out_k_m)
         out_y = nn.functional.conv2d(out_x, out_k_m, padding=0, bias=None)
 
         if step < 1000:
@@ -171,5 +175,5 @@ for f in files_source:
             out_k_np /= np.max(out_k_np)
             imsave(save_path, out_k_np)
 
-            torch.save(net, os.path.join(opt.save_path, "%s_xnet.pth" % imgname))
-            torch.save(net_kernel, os.path.join(opt.save_path, "%s_knet.pth" % imgname))
+            torch.save(net.model, os.path.join(opt.save_path, "%s_xnet.pth" % imgname))
+            torch.save(net_kernel.model, os.path.join(opt.save_path, "%s_knet.pth" % imgname))

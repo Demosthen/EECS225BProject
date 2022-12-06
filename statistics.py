@@ -3,6 +3,7 @@ import math
 from skimage.metrics import structural_similarity as ssim_
 from skimage.metrics import mean_squared_error as mse
 import cv2 as cv
+import os
 
 def psnr(img, gt):
     k = 8
@@ -23,23 +24,46 @@ def ssim_color(img, gt):
     data_range = 255
     return ssim_(img, gt, data_range=data_range, multichannel=True)
 
-# testing on identical images
-gt = cv.imread(r"datasets\test_data_loader\gt\im1_kernel1_img.png", 0)
-img = cv.imread(r"datasets\test_data_loader\input\im1_kernel1_img.png", 0)
-print("Identical Image Comparison")
-print("PSNR:", psnr(img, gt))
-print("SSIM:", ssim(img, gt))
+# # testing on identical images
+# gt = cv.imread(r"datasets\test_data_loader\gt\im1_kernel1_img.png", 0)
+# img = cv.imread(r"datasets\test_data_loader\input\im1_kernel1_img.png", 0)
+# print("Identical Image Comparison")
+# print("PSNR:", psnr(img, gt))
+# print("SSIM:", ssim(img, gt))
 
-# testing on blurry vs gt image
-gt = cv.imread(r"datasets\levin\im1_kernel1_img.png", 0)
-img = cv.imread(r"datasets\levin\gt\im1.png", 0)
-print("Blurry vs. GT Image Comparison")
-print("PSNR:", psnr(img, gt))
-print("SSIM:", ssim(img, gt))
+# # testing on blurry vs gt image
+# gt = cv.imread(r"datasets\levin\im1_kernel1_img.png", 0)
+# img = cv.imread(r"datasets\levin\gt\im1.png", 0)
+# print("Blurry vs. GT Image Comparison")
+# print("PSNR:", psnr(img, gt))
+# print("SSIM:", ssim(img, gt))
 
-# comparing different blur kernels
-gt = cv.imread(r"datasets\levin\im1_kernel1_img.png", 0)
-img = cv.imread(r"datasets\levin\im1_kernel2_img.png", 0)
-print("Blur Kernel 1 Image vs. Blur Kernel 2 Image Comparison")
-print("PSNR:", psnr(img, gt))
-print("SSIM:", ssim(img, gt))
+# # comparing different blur kernels
+# gt = cv.imread(r"datasets\levin\im1_kernel1_img.png", 0)
+# img = cv.imread(r"datasets\levin\im1_kernel2_img.png", 0)
+# print("Blur Kernel 1 Image vs. Blur Kernel 2 Image Comparison")
+# print("PSNR:", psnr(img, gt))
+# print("SSIM:", ssim(img, gt))
+
+def get_folder_statistics(root: str):
+    rgb_dir = 'results'
+    gt_dir = 'gt'
+    psnr_total = 0
+    ssim_total = 0
+    count = 0
+    rgb_fnames = sorted(os.listdir(os.path.join(root, rgb_dir)))
+    for gt_fname in sorted(os.listdir(os.path.join(root, gt_dir))):
+        if gt_fname in rgb_fnames and 'x.png' in gt_fname:
+            # if we have a match, calculate statistics
+            rgb = cv.imread(os.path.join(root, rgb_dir, gt_fname), 0)
+            gt = cv.imread(os.path.join(root, gt_dir, gt_fname), 0)
+            psnr_total += psnr(rgb, gt)
+            ssim_total += ssim(rgb, gt)
+            count += 1
+    psnr_average = psnr_total / count
+    ssim_average = ssim_total / count
+    print("Average PSNR:", psnr_average)
+    print("Average SSIM:", ssim_average)
+
+# testing folder analysis of results vs. ground truth
+get_folder_statistics("test_statistics/")
