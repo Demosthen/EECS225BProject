@@ -40,9 +40,14 @@ parser.add_argument('--save_frequency', type=int,
 opt = parser.parse_args()
 # print(opt)
 
-torch.backends.cudnn.enabled = False
-torch.backends.cudnn.benchmark = False
-dtype = torch.FloatTensor
+if torch.cuda.is_available():
+    torch.backends.cudnn.enabled = True
+    torch.backends.cudnn.benchmark = True
+    dtype = torch.cuda.FloatTensor
+else:
+    torch.backends.cudnn.enabled = False
+    torch.backends.cudnn.benchmark = False
+    dtype = torch.FloatTensor
 
 warnings.filterwarnings("ignore")
 
