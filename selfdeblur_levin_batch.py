@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import argparse
 import os
 import numpy as np
+from networks.hyper import HyperDip, HyperNetwork
 from networks.skip import skip
 from networks.fcn import fcn
 import cv2
@@ -18,6 +19,8 @@ from torch.optim.lr_scheduler import MultiStepLR
 from utils.common_utils import *
 from SSIM import SSIM
 import dataloader
+
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--num_iter', type=int, default=50,
@@ -54,6 +57,20 @@ LR = 0.01
 num_iter = opt.num_iter
 reg_noise_std = 0.001
 
+input_depth = 8
+
+net = HyperDip(input_depth, 1,
+               num_channels_down=[128, 128, 128, 128, 128],
+               num_channels_up=[128, 128, 128, 128, 128],
+               num_channels_skip=[16, 16, 16, 16, 16],
+               upsample_mode='bilinear',
+               need_sigmoid=True, need_bias=True, pad='reflection', act_fun='LeakyReLU')
+net = net.type(dtype)
+
+
+hnet = HyperNetwork(net)
+hnet = hnet.type(dtype)
+
 dataloader = dataloader.get_dataloader(
     opt.data_path, batch_size=opt.batch_size, shuffle=True)
 for i, (rgb, gt, rgb_path) in enumerate(dataloader):
@@ -78,15 +95,6 @@ for i, (rgb, gt, rgb_path) in enumerate(dataloader):
 
     net_input = get_noise(input_depth, INPUT,
                           (opt.img_size[0], opt.img_size[1])).type(dtype)
-
-    net = skip(input_depth, 1,
-               num_channels_down=[128, 128, 128, 128, 128],
-               num_channels_up=[128, 128, 128, 128, 128],
-               num_channels_skip=[16, 16, 16, 16, 16],
-               upsample_mode='bilinear',
-               need_sigmoid=True, need_bias=True, pad=pad, act_fun='LeakyReLU')
-
-    net = net.type(dtype)
 
     '''
     k_net:
@@ -125,7 +133,8 @@ for i, (rgb, gt, rgb_path) in enumerate(dataloader):
         optimizer.zero_grad()
 
         # get the network output
-        out_x = net(net_input)
+        weights = hnet(rgb)
+        out_x = net(net_input, weights=weights)
         out_k = net_kernel(net_input_kernel)
 
         out_k_m = out_k.view(-1, 1, opt.kernel_size[0], opt.kernel_size[1])
