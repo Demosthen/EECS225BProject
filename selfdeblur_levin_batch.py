@@ -87,13 +87,16 @@ dataloader = dataloader.get_dataloader(
     opt.data_path, batch_size=opt.batch_size, shuffle=True)
 for i, (rgb, gt, rgb_path) in enumerate(dataloader):
     print(f"Processing batch: {i+1}")
+    # Get our current batch size since it could be less than opt.batch_size
+    batch_size = len(rgb)
 
     # for n in range(opt.batch_size):
     #     print("Image: batch {0}, image {1}".format(i+1, n+1))
 
     # _, imgs = get_image(path_to_image, -1)  # load image and convert to np.
     # y = np_to_torch(rgb).type(dtype)
-    y = rgb
+    y = gt.type(dtype)
+    rgb = rgb.type(dtype)
 
     img_size = rgb.shape
     # ######################################################################
@@ -157,11 +160,7 @@ for i, (rgb, gt, rgb_path) in enumerate(dataloader):
             out_y.append(F.conv2d(out_x[-1], out_k_m[-1], padding=0, bias=None))
         out_x = torch.stack(out_x)
         out_k_m = torch.stack(out_k_m)
-        out_y = torch.stack(out_y)
-
-        
-        print(out_k_m.shape, out_x.shape)
-        
+        out_y = torch.stack(out_y)        
 
         if step < 1000:
             total_loss = mse(out_y, y)
@@ -178,7 +177,7 @@ for i, (rgb, gt, rgb_path) in enumerate(dataloader):
         if (step+1) % opt.save_frequency == 0:
             #print('Iteration %05d' %(step+1))
 
-            for n in range(opt.batch_size):
+            for n in range(batch_size):
                 path_to_image = rgb_path[n]
                 imgname = os.path.basename(path_to_image)
                 imgname = os.path.splitext(imgname)[0]
