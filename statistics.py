@@ -46,20 +46,21 @@ def ssim_color(img, gt):
 # print("SSIM:", ssim(img, gt))
 
 def get_folder_statistics(root: str):
-    rgb_dir = 'results'
+    rgb_dir = 'hard_kernels'
     gt_dir = 'gt'
     psnr_total = 0
     ssim_total = 0
     count = 0
-    rgb_fnames = sorted(os.listdir(os.path.join(root, rgb_dir)))
-    for gt_fname in sorted(os.listdir(os.path.join(root, gt_dir))):
-        if gt_fname in rgb_fnames and 'x.png' in gt_fname:
-            # if we have a match, calculate statistics
-            rgb = cv.imread(os.path.join(root, rgb_dir, gt_fname), 0)
-            gt = cv.imread(os.path.join(root, gt_dir, gt_fname), 0)
-            psnr_total += psnr(rgb, gt)
-            ssim_total += ssim(rgb, gt)
-            count += 1
+    gt_fnames = sorted(os.listdir(os.path.join(root, gt_dir)))
+    for rgb_fname in sorted(os.listdir(os.path.join(root, rgb_dir))):
+        for gt_fname in gt_fnames:
+            if gt_fname[:-4] in rgb_fname and 'x.png' in rgb_fname:
+                # if we have a match, calculate statistics
+                rgb = cv.imread(os.path.join(root, rgb_dir, rgb_fname), 0)
+                gt = cv.imread(os.path.join(root, gt_dir, gt_fname), 0)
+                psnr_total += psnr(rgb, gt)
+                ssim_total += ssim(rgb, gt)
+                count += 1
     psnr_average = psnr_total / count
     ssim_average = ssim_total / count
     print("Average PSNR:", psnr_average)
