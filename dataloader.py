@@ -60,7 +60,6 @@ def get_dataloader(root: str, batch_size: int, shuffle: bool):
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
-<<<<<<< HEAD
 # dataloader = get_dataloader(
 #     "datasets/test_data_loader/", batch_size=4, shuffle=True)
 # print(dataloader.dataset.rgb_samples) # not sorted to batches
@@ -76,19 +75,3 @@ def get_dataloader(root: str, batch_size: int, shuffle: bool):
 #         plt.imshow(gt[i].squeeze().permute(1, 2, 0))
 #         plt.title(f'GT img{i+1}')
 #         plt.show()
-=======
-import matplotlib.pyplot as plt
-
-dataloader = get_dataloader("datasets/test_data_loader/", batch_size=4, shuffle=True)
-for i, (rgb, gt) in enumerate(dataloader):
-    print(i)
-    for i in range(4):
-        plt.figure(figsize=(10, 5))
-        plt.subplot(221)
-        plt.imshow(rgb[i].squeeze().permute(1, 2, 0))
-        plt.title(f'RGB img{i+1}')
-        plt.subplot(222)
-        plt.imshow(gt[i].squeeze().permute(1, 2, 0))
-        plt.title(f'GT img{i+1}')
-        plt.show()
->>>>>>> 87932b63720390e76a26dfdb5da86ee825dacee4

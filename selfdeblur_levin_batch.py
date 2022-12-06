@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import argparse
 import os
 import numpy as np
+from networks.hyper import HyperDip, HyperNetwork
 from networks.skip import skip
 from networks.fcn import fcn
 import cv2
@@ -54,6 +55,20 @@ LR = 0.01
 num_iter = opt.num_iter
 reg_noise_std = 0.001
 
+input_depth = 8
+
+net = HyperDip(input_depth, 1,
+                num_channels_down = [128, 128, 128, 128, 128],
+                num_channels_up   = [128, 128, 128, 128, 128],
+                num_channels_skip = [16, 16, 16, 16, 16],
+                upsample_mode='bilinear',
+                need_sigmoid=True, need_bias=True, pad='reflection', act_fun='LeakyReLU')
+net = net.type(dtype)
+
+
+hnet = HyperNetwork(net)
+hnet = hnet.type(dtype)
+
 dataloader = dataloader.get_dataloader(
     opt.data_path, batch_size=opt.batch_size, shuffle=True)
 for i, (rgb, gt, rgb_path) in enumerate(dataloader):
@@ -99,15 +114,6 @@ for i, (rgb, gt, rgb_path) in enumerate(dataloader):
         net_input = get_noise(input_depth, INPUT,
                               (opt.img_size[0], opt.img_size[1])).type(dtype)
 
-        net = skip(input_depth, 1,
-                   num_channels_down=[128, 128, 128, 128, 128],
-                   num_channels_up=[128, 128, 128, 128, 128],
-                   num_channels_skip=[16, 16, 16, 16, 16],
-                   upsample_mode='bilinear',
-                   need_sigmoid=True, need_bias=True, pad=pad, act_fun='LeakyReLU')
-
-        net = net.type(dtype)
-
         '''
         k_net:
         '''
@@ -132,6 +138,7 @@ for i, (rgb, gt, rgb_path) in enumerate(dataloader):
         net_input_saved = net_input.detach().clone()
         net_input_kernel_saved = net_input_kernel.detach().clone()
 
+        img = torch.tensor(imgs).type(dtype).expand(1, 3, -1, -1)
         # start SelfDeblur
         for step in tqdm(range(num_iter)):
 
@@ -144,8 +151,9 @@ for i, (rgb, gt, rgb_path) in enumerate(dataloader):
             scheduler.step(step)
             optimizer.zero_grad()
 
-            # get the network output
-            out_x = net(net_input)
+             # get the network output
+            weights = hnet(img)
+            out_x = net(net_input, weights=weights)
             out_k = net_kernel(net_input_kernel)
 
             out_k_m = out_k.view(-1, 1, opt.kernel_size[0], opt.kernel_size[1])
