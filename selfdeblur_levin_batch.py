@@ -16,6 +16,7 @@ from skimage.io import imsave
 import warnings
 from tqdm import tqdm
 from torch.optim.lr_scheduler import MultiStepLR
+import torch.nn.functional as F
 from utils.common_utils import *
 from SSIM import SSIM
 import dataloader
@@ -143,12 +144,24 @@ for i, (rgb, gt, rgb_path) in enumerate(dataloader):
         # get the network output
         dip_weights = hyper_dip(rgb)
         fcn_weights = hyper_fcn(rgb)
-        out_x = net(net_input, weights=dip_weights)
-        out_k = net_kernel(net_input_kernel, weights=fcn_weights)
+        # out_x = net(net_input, weights=dip_weights)
+        # out_k = net_kernel(net_input_kernel, weights=fcn_weights)
+        out_x = []
+        out_k_m = []
+        out_y = []
+        
+        for i, img in enumerate(rgb):
+            out_x.append(net(net_input, weights=dip_weights[i]))
+            out_k = net_kernel(net_input_kernel, fcn_weights[i])
+            out_k_m.append(out_k.view(-1, 1, opt.kernel_size[0], opt.kernel_size[1]))
+            out_y.append(F.conv2d(out_x[-1], out_k_m[-1], padding=0, bias=None))
+        out_x = torch.stack(out_x)
+        out_k_m = torch.stack(out_k_m)
+        out_y = torch.stack(out_y)
 
-        out_k_m = out_k.view(-1, 1, opt.kernel_size[0], opt.kernel_size[1])
-        # print(out_k_m)
-        out_y = nn.functional.conv2d(out_x, out_k_m, padding=0, bias=None)
+        
+        print(out_k_m.shape, out_x.shape)
+        
 
         if step < 1000:
             total_loss = mse(out_y, y)

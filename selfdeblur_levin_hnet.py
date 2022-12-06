@@ -21,6 +21,7 @@ from hypnettorch.hnets.structured_hmlp_examples import resnet_chunking
 from hypnettorch.hnets import StructuredHMLP
 from hypnettorch.mnets import ResNet
 from networks.hyper import HyperDip, HyperNetwork
+import torch.nn.functional as F
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--num_iter', type=int, default=5000, help='number of epochs of training')
@@ -149,9 +150,9 @@ for f in files_source:
         out_y = nn.functional.conv2d(out_x, out_k_m, padding=0, bias=None)
 
         if step < 1000:
-            total_loss = mse(out_y,y) 
+            total_loss = mse(out_y,y) + 0.1 * F.l1_loss(out_k, 0)
         else:
-            total_loss = 1-ssim(out_y, y) 
+            total_loss = 1-ssim(out_y, y) + 0.1 * F.l1_loss(out_k, 0)
 
         total_loss.backward()
         optimizer.step()
