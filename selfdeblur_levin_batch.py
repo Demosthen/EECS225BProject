@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import argparse
 import os
 import numpy as np
-from networks.hyper import HyperDip, HyperNetwork
+from networks.hyper import HyperDip, HyperFCN, HyperNetwork
 from networks.skip import skip
 from networks.fcn import fcn
 import cv2
@@ -72,9 +72,15 @@ net = HyperDip(input_depth, 1,
                need_sigmoid=True, need_bias=True, pad='reflection', act_fun='LeakyReLU')
 net = net.type(dtype)
 
+n_k = 200
+net_kernel = HyperFCN(n_k, opt.kernel_size[0]*opt.kernel_size[1])
+net_kernel = net_kernel.type(dtype)
 
-hnet = HyperNetwork(net)
-hnet = hnet.type(dtype)
+hyper_dip = HyperNetwork(net)
+hyper_dip = hyper_dip.type(dtype)
+
+hyper_fcn = HyperNetwork(net_kernel)
+hyper_fcn = hyper_fcn.type(dtype)
 
 dataloader = dataloader.get_dataloader(
     opt.data_path, batch_size=opt.batch_size, shuffle=True)
@@ -104,12 +110,8 @@ for i, (rgb, gt, rgb_path) in enumerate(dataloader):
     '''
     k_net:
     '''
-    n_k = 200
     net_input_kernel = get_noise(n_k, INPUT, (1, 1)).type(dtype)
     net_input_kernel.squeeze_()
-
-    net_kernel = fcn(n_k, opt.kernel_size[0]*opt.kernel_size[1])
-    net_kernel = net_kernel.type(dtype)
 
     # Losses
     mse = torch.nn.MSELoss().type(dtype)
@@ -117,7 +119,8 @@ for i, (rgb, gt, rgb_path) in enumerate(dataloader):
 
     # optimizer
     optimizer = torch.optim.Adam([{'params': net.parameters()}, {
-        'params': net_kernel.parameters(), 'lr': 1e-4}], lr=LR)
+        'params': net_kernel.parameters(), 'lr': 1e-4},
+        {'params': hyper_dip.parameters()}, {'params': hyper_fcn.parameters()}], lr=LR)
     scheduler = MultiStepLR(optimizer, milestones=[
                             2000, 3000, 4000], gamma=0.5)  # learning rates
 
@@ -138,9 +141,10 @@ for i, (rgb, gt, rgb_path) in enumerate(dataloader):
         optimizer.zero_grad()
 
         # get the network output
-        weights = hnet(rgb)
-        out_x = net(net_input, weights=weights)
-        out_k = net_kernel(net_input_kernel)
+        dip_weights = hyper_dip(rgb)
+        fcn_weights = hyper_fcn(rgb)
+        out_x = net(net_input, weights=dip_weights)
+        out_k = net_kernel(net_input_kernel, weights=fcn_weights)
 
         out_k_m = out_k.view(-1, 1, opt.kernel_size[0], opt.kernel_size[1])
         # print(out_k_m)
