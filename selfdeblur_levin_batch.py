@@ -20,6 +20,7 @@ import torch.nn.functional as F
 from utils.common_utils import *
 from SSIM import SSIM
 import dataloader
+import wandb
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
@@ -40,6 +41,9 @@ parser.add_argument('--save_frequency', type=int,
                     default=10, help='lfrequency to save results')
 opt = parser.parse_args()
 # print(opt)
+
+run = wandb.init(project="EECS225BProject", entity="cs182rlproject")
+wandb.config.update(opt)
 
 if torch.cuda.is_available():
     torch.backends.cudnn.enabled = True
@@ -82,6 +86,8 @@ hyper_dip = hyper_dip.type(dtype)
 
 hyper_fcn = HyperNetwork(net_kernel)
 hyper_fcn = hyper_fcn.type(dtype)
+
+wandb.watch((hyper_dip, hyper_fcn), log_freq=1)
 
 dataloader = dataloader.get_dataloader(
     opt.data_path, batch_size=opt.batch_size, shuffle=True)
@@ -170,6 +176,9 @@ for i, (rgb, gt, rgb_path) in enumerate(dataloader):
         total_loss.backward()
         optimizer.step()
 
+        to_log = {
+            "total_loss": total_loss,
+        }
         # print the loss
         if step % 10 == 0:
             print("{}: {}".format(step, total_loss.item()))
@@ -199,3 +208,6 @@ for i, (rgb, gt, rgb_path) in enumerate(dataloader):
                     opt.save_path, "%s_xnet.pth" % imgname))
                 torch.save(net_kernel, os.path.join(
                     opt.save_path, "%s_knet.pth" % imgname))
+                to_log["img"] = wandb.Image(out_x_np, mode="L")
+                to_log["kernel"] = wandb.Image(out_k_np, mode="L")
+        wandb.log(to_log)
