@@ -7,31 +7,36 @@ from torchvision.transforms import ToTensor
 import os
 from utils.common_utils import *
 
+def equal_fnames(rgb_fname, gt_fname):
+    return gt_fname == rgb_fname
 
-def make_dataset(root: str) -> list:
+def make_dataset(root: str, compare_func) -> list:
     """Reads a directory with data.
     Returns a dataset as a list of tuples of paired image paths: (rgb_path, gt_path)
     """
+    if compare_func == None:
+        compare_func = equal_fnames
     dataset = []
     # Directory Names
     rgb_dir = 'input'
     gt_dir = 'gt'
-    rgb_fnames = sorted(os.listdir(os.path.join(root, rgb_dir)))
-    for gt_fname in sorted(os.listdir(os.path.join(root, gt_dir))):
-        if gt_fname in rgb_fnames:
-            # if we have a match, create pair of full paths and append
-            rgb_path = os.path.join(root, rgb_dir, gt_fname)
-            gt_path = os.path.join(root, gt_dir, gt_fname)
-            item = (rgb_path, gt_path)
-            dataset.append(item)
+    gt_fnames = sorted(os.listdir(os.path.join(root, gt_dir)))
+    for rgb_fname in sorted(os.listdir(os.path.join(root, rgb_dir))):
+        for gt_fname in gt_fnames:
+            if compare_func(rgb_fname, gt_fname):
+                # if we have a match, create pair of full paths and append
+                rgb_path = os.path.join(root, rgb_dir, gt_fname)
+                gt_path = os.path.join(root, gt_dir, gt_fname)
+                item = (rgb_path, gt_path)
+                dataset.append(item)
     return dataset
 
 
 class InputGTDataset(VisionDataset):
 
-    def __init__(self, root, loader=default_loader, input_transform=None, gt_transform=None):
+    def __init__(self, root, compare_func, loader=default_loader, input_transform=None, gt_transform=None):
         super().__init__(root, transform=input_transform, target_transform=gt_transform)
-        samples = make_dataset(self.root)
+        samples = make_dataset(self.root, compare_func)
         self.loader = loader
         self.samples = samples
         self.rgb_samples = [s[0] for s in samples]
@@ -54,16 +59,16 @@ class InputGTDataset(VisionDataset):
         return len(self.samples)
 
 
-def get_dataloader(root: str, batch_size: int, shuffle: bool):
+def get_dataloader(root: str, batch_size: int, shuffle: bool, compare_func=None):
     transforms = ToTensor()
     dataset = InputGTDataset(
-        root, input_transform=transforms, gt_transform=transforms)
+        root, compare_func, input_transform=transforms, gt_transform=transforms)
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
 # dataloader = get_dataloader(
 #     "datasets/test_data_loader/", batch_size=4, shuffle=True)
-# for i, (rgb, gt) in enumerate(dataloader):
+# for i, (rgb, gt, rgb_path) in enumerate(dataloader):
 #     print(i)
 #     for i in range(4):
 #         plt.figure(figsize=(10, 5))

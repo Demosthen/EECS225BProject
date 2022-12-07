@@ -45,7 +45,12 @@ def ssim_color(img, gt):
 # print("PSNR:", psnr(img, gt))
 # print("SSIM:", ssim(img, gt))
 
-def get_folder_statistics(root: str):
+def compare_fnames(rgb_fname, gt_fname):
+    return gt_fname[:-4] in rgb_fname and 'x.png' in rgb_fname
+
+def get_folder_statistics(root: str, compare_func=None):
+    if compare_func == None:
+        compare_func = compare_fnames
     rgb_dir = 'hard_kernels'
     gt_dir = 'gt'
     psnr_total = 0
@@ -54,7 +59,7 @@ def get_folder_statistics(root: str):
     gt_fnames = sorted(os.listdir(os.path.join(root, gt_dir)))
     for rgb_fname in sorted(os.listdir(os.path.join(root, rgb_dir))):
         for gt_fname in gt_fnames:
-            if gt_fname[:-4] in rgb_fname and 'x.png' in rgb_fname:
+            if compare_func(rgb_fname, gt_fname):
                 # if we have a match, calculate statistics
                 rgb = cv.imread(os.path.join(root, rgb_dir, rgb_fname), 0)
                 gt = cv.imread(os.path.join(root, gt_dir, gt_fname), 0)
@@ -67,4 +72,4 @@ def get_folder_statistics(root: str):
     print("Average SSIM:", ssim_average)
 
 # testing folder analysis of results vs. ground truth
-get_folder_statistics("test_statistics/")
+# get_folder_statistics("test_statistics/")
