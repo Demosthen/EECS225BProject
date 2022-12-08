@@ -9,3 +9,4 @@ torchvision==0.11.2
 tqdm==4.64.1
 hypnettorch==0.0.4
 jupyter==1.0.0
+wandb==0.13.6
