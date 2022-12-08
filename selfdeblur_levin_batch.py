@@ -94,6 +94,15 @@ hyper_fcn = hyper_fcn.type(dtype)
 
 wandb.watch((hyper_dip, hyper_fcn), log_freq=1)
 
+pre_softmax_kernel_activation = None
+
+# Register a hook right before the softmax activation so that 
+# we can regularize with L1
+def hook(module, input, output):
+    global pre_softmax_kernel_activation
+    pre_softmax_kernel_activation = input[0]
+net_kernel.model[-1].register_forward_hook(hook)
+
 dataloader = get_dataloader(
     opt.data_path, batch_size=opt.batch_size, shuffle=True)
 for epoch in range(opt.num_epochs):
@@ -180,7 +189,7 @@ for epoch in range(opt.num_epochs):
             else:
                 acc_loss = 1-ssim(out_y, y)
 
-            kernel_l1 = torch.norm(out_k_m.view(-1, opt.kernel_size[0] * opt.kernel_size[1]), 1, -1).mean()
+            kernel_l1 = torch.norm(pre_softmax_kernel_activation.view(-1, opt.kernel_size[0] * opt.kernel_size[1]), 1, -1).mean()
             total_loss = kernel_l1 * opt.l1_coeff + acc_loss
 
             total_loss.backward()
@@ -217,11 +226,17 @@ for epoch in range(opt.num_epochs):
                     out_k_np /= np.max(out_k_np)
                     imsave(save_path, out_k_np.astype(np.uint8))
 
+                    out_y_np = torch_to_np(out_y)
+                    out_y_np = out_y_np.squeeze()
+                    out_y_np = out_y_np[padh//2:padh//2 +
+                                        img_size[2], padw//2:padw//2+img_size[3]]
+
                     torch.save(net, os.path.join(
                         opt.save_path, "%s_xnet.pth" % imgname))
                     torch.save(net_kernel, os.path.join(
                         opt.save_path, "%s_knet.pth" % imgname))
-                    to_log["img"] = wandb.Image(out_x_np, mode="L")
+                    to_log["prior"] = wandb.Image(out_y_np, mode="L")
                     to_log["kernel"] = wandb.Image(out_k_np, mode="L")
+                    to_log["img"] = wandb.Image(out_x_np, mode="L")
                     to_log["gt"] = wandb.Image(gt[n], mode="L")
             wandb.log(to_log)
