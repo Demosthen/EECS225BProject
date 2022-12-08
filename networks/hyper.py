@@ -74,9 +74,12 @@ class HyperDip(MainNetInterface, nn.Module):
         if weights != None:
             for module in self.model.modules():
                 if hasattr(module, "weight"):
-                    module.weight = nn.Parameter(weights[i], requires_grad=True)
-                    module.bias = nn.Parameter(weights[len(self.layer_weight_tensors) + i], requires_grad=True)
+                    del module.weight
+                    del module.bias
+                    module.weight = weights[i]
+                    module.bias = weights[len(self.layer_weight_tensors) + i]
                     i += 1
+
         return self.model(x)
 
     def distillation_targets(self):
@@ -96,7 +99,7 @@ class HyperFCN(MainNetInterface, nn.Module):
         self._hyper_shapes_learned = self._param_shapes
         self._hyper_shapes_distilled = None
         self._has_bias = True
-        self._has_fc_out = False
+        self._has_fc_out = True
         self._mask_fc_out = False
         self._has_linear_out = False
     #     self.model = nn.Sequential()

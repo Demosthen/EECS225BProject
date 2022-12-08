@@ -81,18 +81,22 @@ net = HyperDip(input_depth, 1,
                upsample_mode='bilinear',
                need_sigmoid=True, need_bias=True, pad='reflection', act_fun='LeakyReLU')
 net = net.type(dtype)
+net.train()
 
 n_k = 200
 net_kernel = HyperFCN(n_k, opt.kernel_size[0]*opt.kernel_size[1])
 net_kernel = net_kernel.type(dtype)
+net_kernel.train()
 
 hyper_dip = HyperNetwork(net)
 hyper_dip = hyper_dip.type(dtype)
+hyper_dip.train()
 
 hyper_fcn = HyperNetwork(net_kernel)
 hyper_fcn = hyper_fcn.type(dtype)
+hyper_fcn.train()
 
-wandb.watch((hyper_dip, hyper_fcn), log_freq=1)
+wandb.watch((hyper_dip, hyper_fcn, net, net_kernel), log_freq=10, log="all")
 
 pre_softmax_kernel_activation = None
 
@@ -144,9 +148,8 @@ for epoch in range(opt.num_epochs):
         ssim = SSIM().type(dtype)
 
         # optimizer
-        optimizer = torch.optim.Adam([{'params': net.parameters()}, {
-            'params': net_kernel.parameters(), 'lr': KERNEL_LR},
-            {'params': hyper_dip.parameters()}, {'params': hyper_fcn.parameters()}], lr=LR)
+        optimizer = torch.optim.Adam([
+            {'params': hyper_dip.hnet.internal_params}, {'params': hyper_fcn.hnet.internal_params}], lr=LR)
         scheduler = MultiStepLR(optimizer, milestones=[
                                 2000, 3000, 4000], gamma=0.5)  # learning rates
 
@@ -174,30 +177,34 @@ for epoch in range(opt.num_epochs):
             out_x = []
             out_k_m = []
             out_y = []
+            kernel_l1 = []
             
             for i, img in enumerate(rgb):
                 out_x.append(net(net_input, weights=dip_weights[i]))
                 out_k = net_kernel(net_input_kernel, fcn_weights[i])
                 out_k_m.append(out_k.view(-1, 1, opt.kernel_size[0], opt.kernel_size[1]))
+                kernel_l1.append(torch.norm(pre_softmax_kernel_activation.view(-1, opt.kernel_size[0] * opt.kernel_size[1]), 1, -1))
                 out_y.append(F.conv2d(out_x[-1], out_k_m[-1], padding=0, bias=None))
             out_x = torch.stack(out_x)
             out_k_m = torch.stack(out_k_m)
             out_y = torch.stack(out_y)        
+            kernel_l1 = torch.stack(kernel_l1)
+            kernel_l1_loss = kernel_l1.mean()
 
             if step < 1000:
                 acc_loss = mse(out_y, y)
             else:
                 acc_loss = 1-ssim(out_y, y)
 
-            kernel_l1 = torch.norm(pre_softmax_kernel_activation.view(-1, opt.kernel_size[0] * opt.kernel_size[1]), 1, -1).mean()
-            total_loss = kernel_l1 * opt.l1_coeff + acc_loss
+            
+            total_loss = kernel_l1_loss * opt.l1_coeff + acc_loss
 
             total_loss.backward()
             optimizer.step()
 
             to_log = {
                 "total_loss": total_loss,
-                "Kernel_L1_loss": kernel_l1,
+                "Kernel_L1_loss": kernel_l1_loss,
                 "Accuracy_loss": acc_loss,
                 "Epoch": epoch,
             }
@@ -231,10 +238,10 @@ for epoch in range(opt.num_epochs):
                     out_y_np = out_y_np[padh//2:padh//2 +
                                         img_size[2], padw//2:padw//2+img_size[3]]
 
-                    torch.save(net, os.path.join(
-                        opt.save_path, "%s_xnet.pth" % imgname))
-                    torch.save(net_kernel, os.path.join(
-                        opt.save_path, "%s_knet.pth" % imgname))
+                    # torch.save(net, os.path.join(
+                    #     opt.save_path, "%s_xnet.pth" % imgname))
+                    # torch.save(net_kernel, os.path.join(
+                    #     opt.save_path, "%s_knet.pth" % imgname))
                     to_log["prior"] = wandb.Image(out_y_np, mode="L")
                     to_log["kernel"] = wandb.Image(out_k_np, mode="L")
                     to_log["img"] = wandb.Image(out_x_np, mode="L")
