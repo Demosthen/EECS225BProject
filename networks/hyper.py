@@ -98,7 +98,7 @@ class HyperFCN(MainNetInterface, nn.Module):
         self._has_bias = True
         self._has_fc_out = False
         self._mask_fc_out = False
-        self._has_linear_out = True
+        self._has_linear_out = False
     #     self.model = nn.Sequential()
     #     self.model.add(nn.Linear(num_input_channels, num_hidden,bias=True))
     #     self.model.add(nn.ReLU6())
