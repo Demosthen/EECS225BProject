@@ -50,6 +50,9 @@ parser.add_argument('--kernel_lr', type=float,
 opt = parser.parse_args()
 # print(opt)
 
+if isinstance(opt.kernel_size, int):
+    opt.kernel_size = [opt.kernel_size, opt.kernel_size]
+
 run = wandb.init(project="EECS225BProject", entity="cs182rlproject")
 wandb.config.update(opt)
 
@@ -125,7 +128,7 @@ for epoch in range(opt.num_epochs):
 
         # _, imgs = get_image(path_to_image, -1)  # load image and convert to np.
         # y = np_to_torch(rgb).type(dtype)
-        y = gt.type(dtype)
+        y = rgb.type(dtype)
         rgb = rgb.type(dtype)
 
         img_size = rgb.shape

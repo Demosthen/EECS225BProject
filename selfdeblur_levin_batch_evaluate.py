@@ -87,49 +87,55 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations):
         # get the network output
         dip_weights = hyper_dip(rgb)
         fcn_weights = hyper_fcn(rgb)
+
+        # ### train SelfDeblur
+        # for step in tqdm(range(iterations)):
+
+        #     # input regularization
+        #     net_input = net_input_saved + reg_noise_std * \
+        #         torch.zeros(net_input_saved.shape).type_as(
+        #             net_input_saved.data).normal_()
+
+        #     # change the learning rate
+        #     scheduler.step(step)
+        #     optimizer.zero_grad()
+
+        #     # get the network output
+        #     if step == 0:
+        #         out_x = net(net_input, weights=dip_weights[i])
+        #         out_k = net_kernel(net_input_kernel, weights=fcn_weights[i])
+        #     else:
+        #         out_x = net(net_input)
+        #         out_k = net_kernel(net_input_kernel)
+
+        #     out_k_m = out_k.view(-1, 1, opt.kernel_size[0], opt.kernel_size[1])
+        #     # print(out_k_m)
+        #     out_y = nn.functional.conv2d(out_x, out_k_m, padding=0, bias=None)
+
+        #     if step < 1000:
+        #         total_loss = mse(out_y, y)
+        #     else:
+        #         total_loss = 1-ssim(out_y, y)
+
+        #     total_loss.backward()
+        #     optimizer.step()
         
         psnr_total = 0
-        mse_total = 0
-
-        ### train SelfDeblur
-        for step in tqdm(range(iterations)):
-
-            # input regularization
-            net_input = net_input_saved + reg_noise_std * \
-                torch.zeros(net_input_saved.shape).type_as(
-                    net_input_saved.data).normal_()
-
-            # change the learning rate
-            scheduler.step(step)
-            optimizer.zero_grad()
-
-            # get the network output
-            if step == 0:
-                out_x = net(net_input, weights=dip_weights[i])
-                out_k = net_kernel(net_input_kernel, weights=fcn_weights[i])
-            else:
-                out_x = net(net_input)
-                out_k = net_kernel(net_input_kernel)
-
-            out_k_m = out_k.view(-1, 1, opt.kernel_size[0], opt.kernel_size[1])
-            # print(out_k_m)
-            out_y = nn.functional.conv2d(out_x, out_k_m, padding=0, bias=None)
-
-            if step < 1000:
-                total_loss = mse(out_y, y)
-            else:
-                total_loss = 1-ssim(out_y, y)
-
-            total_loss.backward()
-            optimizer.step()
+        ssim_total = 0
 
         # evaluate trained selfdeblur
         for i, img in enumerate(rgb):
             out_x = net(net_input)
             out_k = net_kernel(net_input_kernel) 
             out_k_m = out_k.view(-1, 1, opt.kernel_size[0], opt.kernel_size[1])
-            psnr_total += psnr(out_x, y)
-            mse_total += mse(out_x, y)
+            out_x_np = torch_to_np(out_x).squeeze()
+            out_x_np = out_x_np[padh//2:padh//2 +
+                                img_size[2], padw//2:padw//2+img_size[3]]
+            out_y_np = torch_to_np(y[i])
+            print(out_x_np.shape)
+            print(out_y_np.shape)
+            psnr_total += psnr(out_x_np, out_y_np)
+            ssim_total += ssim(out_x_np, out_y_np)
             if i == output_img:
                 path_to_image = rgb_path[i]
                 imgname = os.path.basename(path_to_image)
@@ -155,14 +161,15 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations):
                 to_log["img"] = wandb.Image(out_x_np, mode="L")
                 to_log["kernel"] = wandb.Image(out_k_np, mode="L")
         psnr_average = psnr_total / len(rgb)
-        mse_average = mse_total / len(rgb)
+        ssim_average = ssim_total / len(rgb)
 
         to_log = {
             "psnr average": psnr_average,
-            "mse average": mse_average
+            "mse average": ssim_average
         }
 
         wandb.log(to_log)
+        #return statistics here
 
 
 
@@ -187,6 +194,9 @@ parser.add_argument('--save_frequency', type=int,
 parser.add_argument('--l1_coeff', type=float,
                     default=0, help="coefficient on L1 norm of kernel in loss function")
 opt = parser.parse_args()
+
+if isinstance(opt.kernel_size, int):
+    opt.kernel_size = [opt.kernel_size, opt.kernel_size]
 
 # testing evaluate_hnet
 if torch.cuda.is_available():
