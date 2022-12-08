@@ -62,7 +62,7 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations):
         input_depth = 8
 
         net_input = get_noise(input_depth, INPUT,
-                            (img_size[0], img_size[1])).type(dtype)
+                            (opt.img_size[0], opt.img_size[1])).type(dtype)
 
         '''
         k_net:
@@ -104,8 +104,12 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations):
             optimizer.zero_grad()
 
             # get the network output
-            out_x = net(net_input)
-            out_k = net_kernel(net_input_kernel)
+            if step == 0:
+                out_x = net(net_input, weights=dip_weights[i])
+                out_k = net_kernel(net_input_kernel, weights=fcn_weights[i])
+            else:
+                out_x = net(net_input)
+                out_k = net_kernel(net_input_kernel)
 
             out_k_m = out_k.view(-1, 1, opt.kernel_size[0], opt.kernel_size[1])
             # print(out_k_m)
@@ -121,8 +125,8 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations):
 
         # evaluate trained selfdeblur
         for i, img in enumerate(rgb):
-            out_x = net(net_input, weights=dip_weights[i])
-            out_k = net_kernel(net_input_kernel, fcn_weights[i]) 
+            out_x = net(net_input)
+            out_k = net_kernel(net_input_kernel) 
             out_k_m = out_k.view(-1, 1, opt.kernel_size[0], opt.kernel_size[1])
             psnr_total += psnr(out_x, y)
             mse_total += mse(out_x, y)
