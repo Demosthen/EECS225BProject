@@ -96,7 +96,7 @@ hyper_fcn = HyperNetwork(net_kernel)
 hyper_fcn = hyper_fcn.type(dtype)
 hyper_fcn.train()
 
-wandb.watch((hyper_dip, hyper_fcn, net, net_kernel), log_freq=10, log="all")
+wandb.watch((hyper_fcn, hyper_dip, net, net_kernel), log_freq=1, log="all")
 
 pre_softmax_kernel_activation = None
 
