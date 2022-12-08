@@ -132,7 +132,7 @@ class HyperFCN(MainNetInterface, nn.Module):
                 if hasattr(module, "weight"):
                     del module.weight
                     del module.bias
-                    module.weight = nn.Parameter(weights[i])
+                    module.weight = weights[i]
                     module.bias = weights[len(self.layer_weight_tensors) + i]
                     i += 1
         return self.model(x)
