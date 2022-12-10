@@ -147,6 +147,7 @@ for epoch in range(opt.num_epochs):
 
         y = rgb.type(dtype)
         rgb = rgb.type(dtype)
+        rgb.requires_grad=False
 
         img_size = rgb.shape
         # ######################################################################
@@ -160,12 +161,14 @@ for epoch in range(opt.num_epochs):
 
         net_input = get_noise(input_depth, INPUT,
                               (opt.img_size[0], opt.img_size[1])).type(dtype)
+        net_input.requires_grad = False
 
         '''
         k_net:
         '''
         net_input_kernel = get_noise(n_k, INPUT, (1, 1)).type(dtype)
         net_input_kernel.squeeze_()
+        net_input_kernel.requires_grad=False
 
         # initilization inputs
         net_input_saved = net_input.detach().clone()
