@@ -41,6 +41,10 @@ parser.add_argument('--save_frequency', type=int,
                     default=10, help='lfrequency to save results')
 parser.add_argument('--l1_coeff', type=float,
                     default=0, help="coefficient on L1 norm of kernel in loss function")
+parser.add_argument('--lr', type=float,
+                    default=0.01, help="coefficient on L1 norm of kernel in loss function")
+parser.add_argument('--kernel_lr', type=float,
+                    default=0.01, help="coefficient on L1 norm of kernel in loss function")
 opt = parser.parse_args()
 # print(opt)
 
@@ -68,8 +72,8 @@ os.makedirs(save_path, exist_ok=True)
 
 INPUT = 'noise'
 pad = 'reflection'
-LR = 0.01
-KERNEL_LR = 0.01
+LR = opt.lr
+KERNEL_LR = opt.kernel_lr
 num_iter = opt.num_iter
 reg_noise_std = 0.001
 
@@ -126,7 +130,7 @@ for epoch in range(opt.num_epochs):
 
         # _, imgs = get_image(path_to_image, -1)  # load image and convert to np.
         # y = np_to_torch(rgb).type(dtype)
-        y = gt.type(dtype)
+        y = rgb.type(dtype)
         rgb = rgb.type(dtype)
 
         img_size = rgb.shape
