@@ -3,7 +3,7 @@ from torchvision.datasets.folder import default_loader
 from torchvision.datasets.vision import VisionDataset
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
-from torchvision.transforms import ToTensor
+from torchvision.transforms import ToTensor, Compose, Grayscale, Resize
 import os
 from utils.common_utils import *
 
@@ -51,15 +51,6 @@ def make_dataset_gopro(root: str, compare_func) -> list:
             gt_path = os.path.join(root, gt_dir, gt_folder, fname)
             item = (rgb_path, gt_path)
             dataset.append(item)
-    # gt_fnames = sorted(os.listdir(os.path.join(root, gt_dir)))
-    # for rgb_fname in sorted(os.listdir(os.path.join(root, rgb_dir))):
-    #     for gt_fname in gt_fnames:
-    #         if compare_func(rgb_fname, gt_fname):
-    #             # if we have a match, create pair of full paths and append
-    #             rgb_path = os.path.join(root, rgb_dir, gt_fname)
-    #             gt_path = os.path.join(root, gt_dir, gt_fname)
-    #             item = (rgb_path, gt_path)
-    #             dataset.append(item)
     return dataset
 
 
@@ -94,7 +85,7 @@ class InputGTDataset(VisionDataset):
 
 
 def get_dataloader(root: str, batch_size: int, shuffle: bool, compare_func=None, use_gopro_data=False):
-    transforms = ToTensor()
+    transforms = Compose([Resize([255, 255]), Grayscale(3), ToTensor()])
     dataset = InputGTDataset(
         root, compare_func, input_transform=transforms, gt_transform=transforms, use_gopro_data=use_gopro_data)
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
