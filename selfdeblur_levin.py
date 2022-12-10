@@ -124,12 +124,15 @@ for f in files_source:
                                  'params': net_kernel.parameters(), 'lr': 1e-4}], lr=LR)
     scheduler = MultiStepLR(optimizer, milestones=[
                             2000, 3000, 4000], gamma=0.5)  # learning rates
+    # change learning rate to be dependent on number of epochs/ images seen so far
+    # instead of based on number of iterations
+    # scheduler = MultiStepLR(optimizer, milestones=[
 
     # initilization inputs
     net_input_saved = net_input.detach().clone()
     net_input_kernel_saved = net_input_kernel.detach().clone()
 
-    ### start SelfDeblur
+    # start SelfDeblur
     for step in tqdm(range(num_iter)):
 
         # input regularization
@@ -149,6 +152,8 @@ for f in files_source:
         # print(out_k_m)
         out_y = nn.functional.conv2d(out_x, out_k_m, padding=0, bias=None)
 
+        # change iter to be dependent on number of epochs/ images seen so far
+        # switching from mse and ssim
         if step < 1000:
             total_loss = mse(out_y, y)
         else:
