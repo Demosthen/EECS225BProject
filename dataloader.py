@@ -44,7 +44,7 @@ def make_dataset_gopro(root: str, compare_func) -> list:
 
     gt_folders = os.listdir(os.path.join(root, gt_dir))
     rgb_folders = os.listdir(os.path.join(root, rgb_dir))
-    for gt_folder, rgb_folder in gt_folders, rgb_folders:
+    for gt_folder, rgb_folder in zip(gt_folders, rgb_folders):
         full_gt_folder = os.listdir(os.path.join(root, gt_dir, gt_folder))
         for fname in full_gt_folder:
             rgb_path = os.path.join(root, rgb_dir, rgb_folder, fname)
