@@ -92,6 +92,9 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations):
         psnr_total = 0
         ssim_total = 0
 
+        # TODO: how frequently do we want to log to wandb?
+        to_log = {}
+
         for j, img in enumerate(rgb):
             ### train SelfDeblur
             for step in tqdm(range(iterations)):
@@ -101,8 +104,6 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations):
                     torch.zeros(net_input_saved.shape).type_as(
                         net_input_saved.data).normal_()
 
-                # change the learning rate
-                scheduler.step(step)
                 optimizer.zero_grad()
 
                 # get the network output
@@ -119,15 +120,17 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations):
 
                 ref_grayscale = torch.mean(rgb[j], dim=0)[None, None, :, :]
 
-                # if step < 1000:
-                #     total_loss = mse(out_y, rgb[j])
-                # else:
-                    # total_loss = 1-ssim(out_y, rgb[j])
-                total_loss = 1-ssim_tensor(out_y, ref_grayscale)
+                if step < 1000:
+                    total_loss = mse(out_y, ref_grayscale)
+                else:
+                    total_loss = 1-ssim_tensor(out_y, ref_grayscale)
+                # total_loss = 1-ssim_tensor(out_y, ref_grayscale)
 
                 total_loss.backward(retain_graph=True)
                 optimizer.step()
         
+                # change the learning rate
+                scheduler.step()
 
             # evaluate trained selfdeblur
             out_x = net(net_input)
@@ -146,18 +149,18 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations):
                 imgname = os.path.basename(path_to_image)
                 imgname = os.path.splitext(imgname)[0]
 
-                validation_save_path = os.path.join(validation_save_path, '%s_x.png' % imgname)
+                curr_img_path = os.path.join(validation_save_path, '%s_x.png' % imgname)
                 # out_x_np = torch_to_np(out_x)
                 # out_x_np = out_x_np.squeeze()
                 # out_x_np = out_x_np[padh//2:padh//2 +
                 #                     img_size[2], padw//2:padw//2+img_size[3]]
-                imsave(validation_save_path, out_x_np.astype(np.uint8))
+                imsave(curr_img_path, out_x_np.astype(np.uint8))
 
-                validation_save_path = os.path.join(validation_save_path, '%s_k.png' % imgname)
+                curr_kernel_path = os.path.join(validation_save_path, '%s_k.png' % imgname)
                 out_k_np = torch_to_np(out_k_m)
                 out_k_np = out_k_np.squeeze()
                 out_k_np /= np.max(out_k_np)
-                imsave(validation_save_path, out_k_np.astype(np.uint8))
+                imsave(curr_kernel_path, out_k_np.astype(np.uint8))
 
                 torch.save(net, os.path.join(
                     validation_save_path, "%s_xnet.pth" % imgname))
@@ -240,4 +243,4 @@ hyper_dip = hyper_dip.type(dtype)
 hyper_fcn = HyperNetwork(net_kernel)
 hyper_fcn = hyper_fcn.type(dtype)
 
-evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, 5)
+evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, 2)
