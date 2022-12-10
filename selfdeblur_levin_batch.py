@@ -186,9 +186,9 @@ for epoch in range(opt.num_epochs):
             out_y = []
             kernel_l1 = []
 
-            for i, img in enumerate(rgb):
-                out_x.append(net(net_input, weights=dip_weights[i]))
-                out_k = net_kernel(net_input_kernel, fcn_weights[i])
+            for j, img in enumerate(rgb):
+                out_x.append(net(net_input, weights=dip_weights[j]))
+                out_k = net_kernel(net_input_kernel, fcn_weights[j])
                 out_k_m.append(
                     out_k.view(-1, 1, opt.kernel_size[0], opt.kernel_size[1]))
                 kernel_l1.append(torch.norm(
