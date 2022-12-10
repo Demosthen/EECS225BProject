@@ -257,8 +257,8 @@ for epoch in range(opt.num_epochs):
                     #     opt.save_path, "%s_xnet.pth" % imgname))
                     # torch.save(net_kernel, os.path.join(
                     #     opt.save_path, "%s_knet.pth" % imgname))
-                    to_log["prior"] = wandb.Image(out_y_np, mode="L")
+                    to_log["prior"] = wandb.Image(out_x_np, mode="L")
                     to_log["kernel"] = wandb.Image(out_k_np, mode="L")
-                    to_log["img"] = wandb.Image(out_x_np, mode="L")
+                    to_log["img"] = wandb.Image(out_y_np, mode="L")
                     to_log["gt"] = wandb.Image(gt[n], mode="L")
             wandb.log(to_log)
