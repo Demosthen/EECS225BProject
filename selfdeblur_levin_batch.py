@@ -125,11 +125,6 @@ for epoch in range(opt.num_epochs):
         # Get our current batch size since it could be less than opt.batch_size
         batch_size = len(rgb)
 
-        # for n in range(opt.batch_size):
-        #     print("Image: batch {0}, image {1}".format(i+1, n+1))
-
-        # _, imgs = get_image(path_to_image, -1)  # load image and convert to np.
-        # y = np_to_torch(rgb).type(dtype)
         y = rgb.type(dtype)
         rgb = rgb.type(dtype)
 
@@ -218,8 +213,9 @@ for epoch in range(opt.num_epochs):
                 "Kernel_L1_loss": kernel_l1_loss,
                 "Accuracy_loss": acc_loss,
                 "Epoch": epoch,
+                "Learning rate 0": scheduler.get_last_lr()[0],
+                "Learning rate 1": scheduler.get_last_lr()[1],
             }
-            to_log["learning rate"] = wandb.Histogram(scheduler.get_last_lr())
 
             # print the loss
             if step % 10 == 0:
