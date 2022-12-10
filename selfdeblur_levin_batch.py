@@ -162,6 +162,9 @@ for epoch in range(opt.num_epochs):
         net_input_saved = net_input.detach().clone()
         net_input_kernel_saved = net_input_kernel.detach().clone()
 
+        # change the learning rate
+        scheduler.step(epoch)
+
         # start SelfDeblur
         for step in tqdm(range(num_iter)):
 
@@ -171,7 +174,6 @@ for epoch in range(opt.num_epochs):
                     net_input_saved.data).normal_()
 
             # change the learning rate
-            scheduler.step(step)
             optimizer.zero_grad()
 
             # get the network output

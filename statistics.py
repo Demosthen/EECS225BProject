@@ -2,6 +2,8 @@ import numpy as np
 import math
 from skimage.metrics import structural_similarity as ssim_
 from skimage.metrics import mean_squared_error as mse
+from torch.nn import MSELoss
+import torch
 import cv2 as cv
 import os
 
@@ -10,6 +12,13 @@ def psnr(img, gt):
     peak_signal = 2 ** k - 1
     mean_squared_error = mse(img, gt)
     return 10 * math.log10(peak_signal ** 2 / mean_squared_error)
+
+def psnr_tensor(img, gt):
+    k = 8
+    peak_signal = 2 ** k - 1
+    mse = MSELoss()
+    mean_squared_error = mse(img, gt)
+    return 10 * torch.log10(peak_signal ** 2 / mean_squared_error)
 
 def psnr_color(img, gt):
     img = cv.cvtColor(img, cv.COLOR_BGR2YCR_CB)
