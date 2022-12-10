@@ -127,7 +127,7 @@ dataloader = get_dataloader(
 optimizer = torch.optim.Adam([
     {'params': hyper_dip.hnet.internal_params}, {'params': hyper_fcn.hnet.internal_params}], lr=LR)
 scheduler = MultiStepLR(optimizer, milestones=[
-                        opt.num_epoch // 5, opt.num_epochs // 4, opt.num_epochs // 2], gamma=0.5)  # learning rates
+                        opt.num_epochs // 5, opt.num_epochs // 4, opt.num_epochs // 2], gamma=0.5)  # learning rates
 
 
 for epoch in range(opt.num_epochs):
