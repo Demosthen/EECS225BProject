@@ -40,8 +40,10 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         torch.backends.cudnn.benchmark = False
         dtype = torch.FloatTensor
 
+    loader_batch_size  = 1
+
     dataloader = get_dataloader(
-        validation_data_path, batch_size=2, shuffle=False)
+        validation_data_path, batch_size=loader_batch_size, shuffle=False)
     print(f"Evaluating HNet")
 
     iterator = iter(dataloader)
@@ -90,6 +92,10 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         dip_weights = hyper_dip(rgb)
         fcn_weights = hyper_fcn(rgb)
 
+        if loader_batch_size == 1: 
+            dip_weights = [dip_weights]
+            fcn_weights = [fcn_weights]
+
         # initialize evaluation parameters
         psnr_total = 0
         ssim_total = 0
@@ -115,8 +121,8 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
 
                 # get the network output
                 if step == 0:
-                    out_x = net(net_input, weights=dip_weights[j])
-                    out_k = net_kernel(net_input_kernel, weights=fcn_weights[j])
+                    out_x = net(net_input, weights=[nn.Parameter(w) for w in dip_weights[j]])
+                    out_k = net_kernel(net_input_kernel, weights=[nn.Parameter(w) for w in fcn_weights[j]])
                 else:
                     out_x = net(net_input)
                     out_k = net_kernel(net_input_kernel)
@@ -136,7 +142,7 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
                 else:
                     total_loss = 1-curr_ssim
 
-                total_loss.backward(retain_graph=True)
+                total_loss.backward()
                 optimizer.step()
         
                 # adjust the learning rate based on scheduler
