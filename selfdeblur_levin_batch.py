@@ -50,6 +50,8 @@ parser.add_argument('--kernel_lr', type=float,
                     default=0.01, help="coefficient on L1 norm of kernel in loss function")
 parser.add_argument('--eval_freq', type=int,
                     default=2, help="How many epochs to train between evaluations")
+parser.add_argument('--num_steps_per_epoch', type=int,
+                    default=50, help="How many steps to call an epoch")
 opt = parser.parse_args()
 # print(opt)
 
@@ -137,6 +139,8 @@ dataloader = get_dataloader(
 for epoch in range(opt.num_epochs):
     iterator = iter(dataloader)
     for i, (rgb, gt, rgb_path) in enumerate(iterator):
+        if i >= opt.num_steps_per_epoch:
+            break
         print(f"Processing Epoch:{epoch} Batch: {i+1}")
         # Get our current batch size since it could be less than opt.batch_size
         batch_size = len(rgb)
