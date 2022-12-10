@@ -166,7 +166,7 @@ for epoch in range(opt.num_epochs):
         scheduler.step(epoch)
 
         # start SelfDeblur
-        for step in tqdm(range(num_iter)):
+        for substep in tqdm(range(num_iter)):
 
             # input regularization
             net_input = net_input_saved + reg_noise_std * \
@@ -201,7 +201,7 @@ for epoch in range(opt.num_epochs):
             kernel_l1 = torch.stack(kernel_l1)
             kernel_l1_loss = kernel_l1.mean()
 
-            if step < (opt.num_epochs // 5):
+            if epoch < (opt.num_epochs // 5):
                 acc_loss = mse(out_y, y)
             else:
                 acc_loss = 1-ssim(out_y.squeeze(1), y)
@@ -221,10 +221,10 @@ for epoch in range(opt.num_epochs):
             }
 
             # print the loss
-            if step % 10 == 0:
-                print("{}: {}".format(step, kernel_l1_loss.item()))
+            if i % 10 == 0:
+                print("{}: {}".format(substep, kernel_l1_loss.item()))
 
-            if (step+1) % opt.save_frequency == 0:
+            if (i+1) % opt.save_frequency == 0:
                 #print('Iteration %05d' %(step+1))
                 out_x_nps = out_x.detach().cpu().numpy()
                 out_x_nps = out_x_nps.squeeze()
