@@ -120,15 +120,16 @@ net_kernel.model[-1].register_forward_hook(hook)
 mse = torch.nn.MSELoss().type(dtype)
 ssim = SSIM().type(dtype)
 
+dataloader = get_dataloader(
+    opt.data_path, batch_size=opt.batch_size, shuffle=True)
+
 # optimizer
 optimizer = torch.optim.Adam([
     {'params': hyper_dip.hnet.internal_params}, {'params': hyper_fcn.hnet.internal_params}], lr=LR)
 scheduler = MultiStepLR(optimizer, milestones=[
-                        opt.num_epochs // 5, opt.num_epochs // 4, opt.num_epochs // 2], gamma=0.5)  # learning rates
+                        opt.num_epoch // 5, opt.num_epochs // 4, opt.num_epochs // 2], gamma=0.5)  # learning rates
 
 
-dataloader = get_dataloader(
-    opt.data_path, batch_size=opt.batch_size, shuffle=True)
 for epoch in range(opt.num_epochs):
     iterator = iter(dataloader)
     for i, (rgb, gt, rgb_path) in enumerate(iterator):
@@ -162,6 +163,9 @@ for epoch in range(opt.num_epochs):
         net_input_saved = net_input.detach().clone()
         net_input_kernel_saved = net_input_kernel.detach().clone()
 
+        # change the learning rate
+        scheduler.step(epoch)
+
         # start SelfDeblur
         for step in tqdm(range(num_iter)):
 
@@ -171,7 +175,6 @@ for epoch in range(opt.num_epochs):
                     net_input_saved.data).normal_()
 
             # change the learning rate
-            scheduler.step(step)
             optimizer.zero_grad()
 
             # get the network output
