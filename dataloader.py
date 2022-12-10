@@ -31,12 +31,46 @@ def make_dataset(root: str, compare_func) -> list:
                 dataset.append(item)
     return dataset
 
+def make_dataset_gopro(root: str, compare_func) -> list:
+    """Reads a directory with data.
+    Returns a dataset as a list of tuples of paired image paths: (rgb_path, gt_path)
+    """
+    if compare_func == None:
+        compare_func = equal_fnames
+    dataset = []
+    # Directory Names
+    rgb_dir = 'train_blur'
+    gt_dir = 'train_sharp'
+
+    gt_folders = os.listdir(os.path.join(root, gt_dir))
+    rgb_folders = os.listdir(os.path.join(root, rgb_dir))
+    for gt_folder, rgb_folder in gt_folders, rgb_folders:
+        full_gt_folder = os.listdir(os.path.join(root, gt_dir, gt_folder))
+        for fname in full_gt_folder:
+            rgb_path = os.path.join(root, rgb_dir, rgb_folder, fname)
+            gt_path = os.path.join(root, gt_dir, gt_folder, fname)
+            item = (rgb_path, gt_path)
+            dataset.append(item)
+    # gt_fnames = sorted(os.listdir(os.path.join(root, gt_dir)))
+    # for rgb_fname in sorted(os.listdir(os.path.join(root, rgb_dir))):
+    #     for gt_fname in gt_fnames:
+    #         if compare_func(rgb_fname, gt_fname):
+    #             # if we have a match, create pair of full paths and append
+    #             rgb_path = os.path.join(root, rgb_dir, gt_fname)
+    #             gt_path = os.path.join(root, gt_dir, gt_fname)
+    #             item = (rgb_path, gt_path)
+    #             dataset.append(item)
+    return dataset
+
 
 class InputGTDataset(VisionDataset):
 
-    def __init__(self, root, compare_func, loader=default_loader, input_transform=None, gt_transform=None):
+    def __init__(self, root, compare_func, loader=default_loader, input_transform=None, gt_transform=None, use_gopro_data=False):
         super().__init__(root, transform=input_transform, target_transform=gt_transform)
-        samples = make_dataset(self.root, compare_func)
+        if use_gopro_data:
+            samples = make_dataset_gopro(self.root, compare_func)
+        else:
+            samples = make_dataset(self.root, compare_func)
         self.loader = loader
         self.samples = samples
         self.rgb_samples = [s[0] for s in samples]
@@ -59,10 +93,10 @@ class InputGTDataset(VisionDataset):
         return len(self.samples)
 
 
-def get_dataloader(root: str, batch_size: int, shuffle: bool, compare_func=None):
+def get_dataloader(root: str, batch_size: int, shuffle: bool, compare_func=None, use_gopro_data=False):
     transforms = ToTensor()
     dataset = InputGTDataset(
-        root, compare_func, input_transform=transforms, gt_transform=transforms)
+        root, compare_func, input_transform=transforms, gt_transform=transforms, use_gopro_data=use_gopro_data)
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
