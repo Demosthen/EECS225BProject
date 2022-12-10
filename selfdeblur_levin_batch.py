@@ -120,9 +120,6 @@ net_kernel.model[-1].register_forward_hook(hook)
 mse = torch.nn.MSELoss().type(dtype)
 ssim = SSIM().type(dtype)
 
-dataloader = get_dataloader(
-    opt.data_path, batch_size=opt.batch_size, shuffle=True)
-
 # optimizer
 optimizer = torch.optim.Adam([
     {'params': hyper_dip.hnet.internal_params}, {'params': hyper_fcn.hnet.internal_params}], lr=LR)
@@ -130,6 +127,8 @@ scheduler = MultiStepLR(optimizer, milestones=[
                         opt.num_epochs // 5, opt.num_epochs // 4, opt.num_epochs // 2], gamma=0.5)  # learning rates
 
 
+dataloader = get_dataloader(
+    opt.data_path, batch_size=opt.batch_size, shuffle=True, use_gopro_data=("gopro" in opt.data_path))
 for epoch in range(opt.num_epochs):
     iterator = iter(dataloader)
     for i, (rgb, gt, rgb_path) in enumerate(iterator):
@@ -257,6 +256,7 @@ for epoch in range(opt.num_epochs):
                     #     opt.save_path, "%s_xnet.pth" % imgname))
                     # torch.save(net_kernel, os.path.join(
                     #     opt.save_path, "%s_knet.pth" % imgname))
+                    print(out_x_np.shape, gt.shape)
                     to_log["prior"] = wandb.Image(out_x_np, mode="L")
                     to_log["kernel"] = wandb.Image(out_k_np, mode="L")
                     to_log["img"] = wandb.Image(out_y_np, mode="L")
