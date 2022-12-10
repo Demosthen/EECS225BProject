@@ -116,6 +116,17 @@ def hook(module, input, output):
 
 net_kernel.model[-1].register_forward_hook(hook)
 
+# Losses
+mse = torch.nn.MSELoss().type(dtype)
+ssim = SSIM().type(dtype)
+
+# optimizer
+optimizer = torch.optim.Adam([
+    {'params': hyper_dip.hnet.internal_params}, {'params': hyper_fcn.hnet.internal_params}], lr=LR)
+scheduler = MultiStepLR(optimizer, milestones=[
+                        opt.num_epochs // 5, opt.num_epochs // 4, opt.num_epochs // 2], gamma=0.5)  # learning rates
+
+
 dataloader = get_dataloader(
     opt.data_path, batch_size=opt.batch_size, shuffle=True)
 for epoch in range(opt.num_epochs):
@@ -146,16 +157,6 @@ for epoch in range(opt.num_epochs):
         '''
         net_input_kernel = get_noise(n_k, INPUT, (1, 1)).type(dtype)
         net_input_kernel.squeeze_()
-
-        # Losses
-        mse = torch.nn.MSELoss().type(dtype)
-        ssim = SSIM().type(dtype)
-
-        # optimizer
-        optimizer = torch.optim.Adam([
-            {'params': hyper_dip.hnet.internal_params}, {'params': hyper_fcn.hnet.internal_params}], lr=LR)
-        scheduler = MultiStepLR(optimizer, milestones=[
-                                opt.num_epochs // 5, opt.num_epochs // 4, opt.num_epochs // 2], gamma=0.5)  # learning rates
 
         # initilization inputs
         net_input_saved = net_input.detach().clone()
@@ -213,8 +214,8 @@ for epoch in range(opt.num_epochs):
                 "Kernel_L1_loss": kernel_l1_loss,
                 "Accuracy_loss": acc_loss,
                 "Epoch": epoch,
-                "Learning rate 0": scheduler.get_last_lr()[0],
-                "Learning rate 1": scheduler.get_last_lr()[1],
+                "Learning rate 0": scheduler.get_lr()[0],
+                "Learning rate 1": scheduler.get_lr()[1],
             }
 
             # print the loss
