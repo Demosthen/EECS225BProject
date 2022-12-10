@@ -39,6 +39,8 @@ parser.add_argument('--save_path', type=str,
                     default="results/levin/hnet_models/", help='path to save results')
 parser.add_argument('--save_frequency', type=int,
                     default=10, help='lfrequency to save results')
+parser.add_argument('--l6_coeff', type=float,
+                    default=0, help="coefficient on L6 norm of kernel in loss function")
 parser.add_argument('--l1_coeff', type=float,
                     default=0, help="coefficient on L1 norm of kernel in loss function")
 parser.add_argument('--lr', type=float,
@@ -185,6 +187,7 @@ for epoch in range(opt.num_epochs):
             out_k_m = []
             out_y = []
             kernel_l1 = []
+            kernel_l6 = []
 
             for j, img in enumerate(rgb):
                 out_x.append(net(net_input, weights=dip_weights[j]))
@@ -193,6 +196,8 @@ for epoch in range(opt.num_epochs):
                     out_k.view(-1, 1, opt.kernel_size[0], opt.kernel_size[1]))
                 kernel_l1.append(torch.norm(
                     pre_softmax_kernel_activation.view(-1, opt.kernel_size[0] * opt.kernel_size[1]), 1, -1))
+                kernel_l6.append(torch.norm(
+                    pre_softmax_kernel_activation.view(-1, opt.kernel_size[0] * opt.kernel_size[1]), 6, -1))
                 out_y.append(
                     F.conv2d(out_x[-1], out_k_m[-1], padding=0, bias=None))
             out_x = torch.stack(out_x)
@@ -200,13 +205,17 @@ for epoch in range(opt.num_epochs):
             out_y = torch.stack(out_y)
             kernel_l1 = torch.stack(kernel_l1)
             kernel_l1_loss = kernel_l1.mean()
+            kernel_l6 = torch.stack(kernel_l6)
+            kernel_l6_loss = kernel_l6.mean()
 
             if epoch < (opt.num_epochs // 5):
                 acc_loss = mse(out_y, y)
+                is_SSIM = 0
             else:
                 acc_loss = 1-ssim(out_y.squeeze(1), y)
+                is_SSIM = 1
 
-            total_loss = kernel_l1_loss * opt.l1_coeff + acc_loss
+            total_loss = acc_loss + kernel_l1_loss * opt.l1_coeff + kernel_l6_loss * opt.l6_coeff
 
             total_loss.backward()
             optimizer.step()
@@ -214,10 +223,12 @@ for epoch in range(opt.num_epochs):
             to_log = {
                 "total_loss": total_loss,
                 "Kernel_L1_loss": kernel_l1_loss,
+                "Kernel_L6_loss": kernel_l6_loss,
                 "Accuracy_loss": acc_loss,
                 "Epoch": epoch,
                 "Learning rate 0": scheduler.get_lr()[0],
                 "Learning rate 1": scheduler.get_lr()[1],
+                "Using_SSIM": is_SSIM
             }
 
             # print the loss
