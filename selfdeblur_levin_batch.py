@@ -226,6 +226,19 @@ for epoch in range(opt.num_epochs):
 
             if (step+1) % opt.save_frequency == 0:
                 #print('Iteration %05d' %(step+1))
+                out_x_nps = out_x.detach().cpu().numpy()
+                out_x_nps = out_x_nps.squeeze()
+                out_x_nps = out_x_nps[:, padh//2:padh//2 +
+                                    img_size[2], padw//2:padw//2+img_size[3]]
+
+                out_k_nps = out_k_m.detach().cpu().numpy()
+                out_k_nps = out_k_nps.squeeze()
+                out_k_nps /= np.max(out_k_nps)
+
+                out_y_nps = out_y.detach().cpu().numpy()
+                out_y_nps = out_y_nps.squeeze()
+                out_y_nps = out_y_nps[:, padh//2:padh//2 +
+                                    img_size[2], padw//2:padw//2+img_size[3]]
 
                 for n in range(batch_size):
                     path_to_image = rgb_path[n]
@@ -234,31 +247,24 @@ for epoch in range(opt.num_epochs):
 
                     save_path = os.path.join(
                         opt.save_path, '%s_x.png' % imgname)
-                    out_x_np = torch_to_np(out_x)
-                    out_x_np = out_x_np.squeeze()
-                    out_x_np = out_x_np[padh//2:padh//2 +
-                                        img_size[2], padw//2:padw//2+img_size[3]]
+                    out_x_np = out_x_nps[n]
                     imsave(save_path, out_x_np.astype(np.uint8))
 
                     save_path = os.path.join(
                         opt.save_path, '%s_k.png' % imgname)
-                    out_k_np = torch_to_np(out_k_m)
-                    out_k_np = out_k_np.squeeze()
-                    out_k_np /= np.max(out_k_np)
+
+                    out_k_np = out_k_nps[n]
                     imsave(save_path, out_k_np.astype(np.uint8))
 
-                    out_y_np = torch_to_np(out_y)
-                    out_y_np = out_y_np.squeeze()
-                    out_y_np = out_y_np[padh//2:padh//2 +
-                                        img_size[2], padw//2:padw//2+img_size[3]]
+                    out_y_np = out_y_nps[n]
 
                     # torch.save(net, os.path.join(
                     #     opt.save_path, "%s_xnet.pth" % imgname))
                     # torch.save(net_kernel, os.path.join(
                     #     opt.save_path, "%s_knet.pth" % imgname))
-                    print(out_x_np.shape, gt.shape)
-                    to_log["prior"] = wandb.Image(out_x_np, mode="L")
-                    to_log["kernel"] = wandb.Image(out_k_np, mode="L")
-                    to_log["img"] = wandb.Image(out_y_np, mode="L")
-                    to_log["gt"] = wandb.Image(gt[n], mode="L")
+                    
+                to_log["prior"] = wandb.Image(out_x_np, mode="L")
+                to_log["kernel"] = wandb.Image(out_k_np, mode="L")
+                to_log["img"] = wandb.Image(out_y_np, mode="L")
+                to_log["gt"] = wandb.Image(gt[-1], mode="L")
             wandb.log(to_log)
