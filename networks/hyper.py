@@ -10,22 +10,33 @@ from torchvision.models import resnet18
 
 
 class HyperNetwork(nn.Module):
-    def __init__(self, net, chunk_size=16384, layers=(128, 128, 128), freeze_feature_extractor=True) -> None:
+    def __init__(self, net, dtype, chunk_size=16384, layers=(128, 128, 128), freeze_feature_extractor=True) -> None:
         super().__init__()
         self.feature_extractor = resnet18(pretrained=True)
-        self.feature_extractor.requires_grad_ = not freeze_feature_extractor
+        self.feature_extractor = nn.Sequential(self.feature_extractor.conv1,
+            self.feature_extractor.bn1,
+            self.feature_extractor.relu,
+            self.feature_extractor.maxpool,
+            self.feature_extractor.layer1,
+            self.feature_extractor.layer2,
+            self.feature_extractor.avgpool).type(dtype)
+        self.feature_extractor.eval()
+        if freeze_feature_extractor:
+            self.feature_extractor = torch.jit.freeze(torch.jit.script(self.feature_extractor))
+        #self.feature_extractor.requires_grad_ = not freeze_feature_extractor
         self.hnet = ChunkedHMLP(net.hyper_shapes_learned, chunk_size,
                                 layers=layers, use_batch_norm=True, cond_in_size=512)
 
     def forward(self, x):
-        x = self.feature_extractor.conv1(x)
-        x = self.feature_extractor.bn1(x)
-        x = self.feature_extractor.relu(x)
-        x = self.feature_extractor.maxpool(x)
+        x = self.feature_extractor(x)
+        # x = self.feature_extractor.conv1(x)
+        # x = self.feature_extractor.bn1(x)
+        # x = self.feature_extractor.relu(x)
+        # x = self.feature_extractor.maxpool(x)
 
-        x = self.feature_extractor.layer1(x)
-        x = self.feature_extractor.layer2(x)
-        x = self.feature_extractor.avgpool(x)
+        # x = self.feature_extractor.layer1(x)
+        # x = self.feature_extractor.layer2(x)
+        # x = self.feature_extractor.avgpool(x)
         # Flatten x
         x = x[:, -1]
         return self.hnet(cond_input=x)

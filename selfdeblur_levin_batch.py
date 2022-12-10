@@ -21,6 +21,7 @@ from utils.common_utils import *
 from SSIM import SSIM
 from dataloader import get_dataloader
 import wandb
+from selfdeblur_levin_batch_evaluate import evaluate_hnet
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--num_epochs', type=int, default=50,
@@ -47,6 +48,8 @@ parser.add_argument('--lr', type=float,
                     default=0.01, help="coefficient on L1 norm of kernel in loss function")
 parser.add_argument('--kernel_lr', type=float,
                     default=0.01, help="coefficient on L1 norm of kernel in loss function")
+parser.add_argument('--eval_freq', type=int,
+                    default=2, help="How many epochs to train between evaluations")
 opt = parser.parse_args()
 # print(opt)
 
@@ -95,11 +98,11 @@ net_kernel = HyperFCN(n_k, opt.kernel_size[0]*opt.kernel_size[1])
 net_kernel = net_kernel.type(dtype)
 net_kernel.train()
 
-hyper_dip = HyperNetwork(net)
+hyper_dip = HyperNetwork(net, dtype=dtype)
 hyper_dip = hyper_dip.type(dtype)
 hyper_dip.train()
 
-hyper_fcn = HyperNetwork(net_kernel)
+hyper_fcn = HyperNetwork(net_kernel, dtype=dtype)
 hyper_fcn = hyper_fcn.type(dtype)
 hyper_fcn.train()
 
@@ -175,7 +178,6 @@ for epoch in range(opt.num_epochs):
                 torch.zeros(net_input_saved.shape).type_as(
                     net_input_saved.data).normal_()
 
-            # change the learning rate
             optimizer.zero_grad()
 
             # get the network output
@@ -279,3 +281,6 @@ for epoch in range(opt.num_epochs):
                 to_log["img"] = wandb.Image(out_y_np, mode="L")
                 to_log["gt"] = wandb.Image(gt[-1], mode="L")
             wandb.log(to_log)
+    if epoch % opt.eval_freq == 0:
+        to_log = evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, 1000, "results/levin/hnet_evaluation/")
+        wandb.log(to_log)
