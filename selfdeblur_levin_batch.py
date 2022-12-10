@@ -51,7 +51,7 @@ parser.add_argument('--kernel_lr', type=float,
 parser.add_argument('--eval_freq', type=int,
                     default=2, help="How many epochs to train between evaluations")
 parser.add_argument('--num_steps_per_epoch', type=int,
-                    default=50, help="How many steps to call an epoch")
+                    default=None, help="How many batches to call an epoch. default is going through all the data once")
 opt = parser.parse_args()
 # print(opt)
 
@@ -108,7 +108,7 @@ hyper_fcn = HyperNetwork(net_kernel, dtype=dtype)
 hyper_fcn = hyper_fcn.type(dtype)
 hyper_fcn.train()
 
-wandb.watch((hyper_fcn, hyper_dip, net, net_kernel), log_freq=1, log="all")
+wandb.watch((hyper_fcn, hyper_dip, net, net_kernel), log_freq=20, log="all")
 
 pre_softmax_kernel_activation = None
 
@@ -139,7 +139,7 @@ dataloader = get_dataloader(
 for epoch in range(opt.num_epochs):
     iterator = iter(dataloader)
     for i, (rgb, gt, rgb_path) in enumerate(iterator):
-        if i >= opt.num_steps_per_epoch:
+        if opt.num_steps_per_epoch is not None and i >= opt.num_steps_per_epoch:
             break
         print(f"Processing Epoch:{epoch} Batch: {i+1}")
         # Get our current batch size since it could be less than opt.batch_size
