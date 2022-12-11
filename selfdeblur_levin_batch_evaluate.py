@@ -116,7 +116,7 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
                 net_input = net_input_saved + reg_noise_std * \
                     torch.zeros(net_input_saved.shape).type_as(
                         net_input_saved.data).normal_()
-                net_input_kernel = net_input_kernel_saved + reg_noise_std*torch.zeros(net_input_kernel_saved.shape).type_as(net_input_kernel_saved.data).normal_()
+                # net_input_kernel = net_input_kernel_saved + reg_noise_std*torch.zeros(net_input_kernel_saved.shape).type_as(net_input_kernel_saved.data).normal_()
 
                 optimizer.zero_grad()
 

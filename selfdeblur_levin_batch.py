@@ -185,7 +185,7 @@ for epoch in range(opt.num_epochs):
             net_input = net_input_saved + reg_noise_std * \
                 torch.zeros(net_input_saved.shape).type_as(
                     net_input_saved.data).normal_()
-            net_input_kernel = net_input_kernel_saved + reg_noise_std*torch.zeros(net_input_kernel_saved.shape).type_as(net_input_kernel_saved.data).normal_()
+            # net_input_kernel = net_input_kernel_saved + reg_noise_std*torch.zeros(net_input_kernel_saved.shape).type_as(net_input_kernel_saved.data).normal_()
 
             optimizer.zero_grad()
 
