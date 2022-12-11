@@ -34,7 +34,7 @@ parser.add_argument('--kernel_size', type=int,
 parser.add_argument('--data_path', type=str,
                     default="datasets/test_data_loader/", help='path to blurry images')
 parser.add_argument('--batch_size', type=int,
-                    default=16, help='number of images in batch')
+                    default=4, help='number of images in batch')
 parser.add_argument('--save_path', type=str,
                     default="results/levin/hnet_models/", help='path to save results')
 parser.add_argument('--save_frequency', type=int,
