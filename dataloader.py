@@ -56,7 +56,7 @@ def make_dataset_gopro(root: str, compare_func) -> list:
 
 class InputGTDataset(VisionDataset):
 
-    def __init__(self, root, compare_func, loader=default_loader, input_transform=None, gt_transform=None, use_gopro_data=False):
+    def __init__(self, root, compare_func, loader=default_loader, input_transform=None, gt_transform=None, use_gopro_data=False, padh=26, padw=26):
         super().__init__(root, transform=input_transform, target_transform=gt_transform)
         if use_gopro_data:
             samples = make_dataset_gopro(self.root, compare_func)
@@ -64,6 +64,11 @@ class InputGTDataset(VisionDataset):
             samples = make_dataset(self.root, compare_func)
         self.loader = loader
         self.samples = samples
+        input_depth = 8
+        n_k = 200
+        self.net_inputs = [get_noise(input_depth, 'noise',
+                              (255+padh, 255+padw)) for s in samples]
+        self.net_input_kernels = [get_noise(n_k, 'noise', (1, 1)).squeeze() for s in samples]
         self.rgb_samples = [s[0] for s in samples]
         self.gt_samples = [s[1] for s in samples]
 
@@ -78,16 +83,16 @@ class InputGTDataset(VisionDataset):
             rgb_sample = self.transform(rgb_sample)
         if self.target_transform is not None:
             gt_sample = self.target_transform(gt_sample)
-        return rgb_sample, gt_sample, rgb_path
+        return rgb_sample, gt_sample, rgb_path, self.net_inputs[index], self.net_input_kernels[index]
 
     def __len__(self):
         return len(self.samples)
 
 
-def get_dataloader(root: str, batch_size: int, shuffle: bool, compare_func=None, use_gopro_data=False):
+def get_dataloader(root: str, batch_size: int, shuffle: bool, compare_func=None, use_gopro_data=False, padh=27, padw=27):
     transforms = Compose([Resize([255, 255]), Grayscale(3), ToTensor()])
     dataset = InputGTDataset(
-        root, compare_func, input_transform=transforms, gt_transform=transforms, use_gopro_data=use_gopro_data)
+        root, compare_func, input_transform=transforms, gt_transform=transforms, use_gopro_data=use_gopro_data, padh=padh, padw=padw)
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 

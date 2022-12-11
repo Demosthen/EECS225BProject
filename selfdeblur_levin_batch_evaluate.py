@@ -42,12 +42,13 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
 
     loader_batch_size  = 1
 
+    padh, padw = opt.kernel_size[0]-1, opt.kernel_size[1]-1
     dataloader = get_dataloader(
-        validation_data_path, batch_size=loader_batch_size, shuffle=False)
+        validation_data_path, batch_size=loader_batch_size, shuffle=False, padh=padh, padw=padw)
     print(f"Evaluating HNet")
 
     iterator = iter(dataloader)
-    for i, (rgb, gt, rgb_path) in enumerate(iterator):
+    for i, (rgb, gt, rgb_path, net_input, net_input_kernel) in enumerate(iterator):
         # Get our current batch size since it could be less than opt.batch_size
         batch_size = len(rgb)
 
@@ -56,7 +57,7 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
 
         img_size = rgb.shape
         # ######################################################################
-        padh, padw = opt.kernel_size[0]-1, opt.kernel_size[1]-1
+        
         opt.img_size[0], opt.img_size[1] = img_size[2]+padh, img_size[3]+padw
 
         '''
@@ -64,15 +65,16 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         '''
         input_depth = 8
 
-        net_input = get_noise(input_depth, INPUT,
-                            (opt.img_size[0], opt.img_size[1])).type(dtype)
+        # net_input = get_noise(input_depth, INPUT,
+        #                     (opt.img_size[0], opt.img_size[1])).type(dtype)
 
+        net_input = net_input.type(dtype)
         '''
         k_net:
         '''
-        net_input_kernel = get_noise(n_k, INPUT, (1, 1)).type(dtype)
-        net_input_kernel.squeeze_()
-
+        # net_input_kernel = get_noise(n_k, INPUT, (1, 1)).type(dtype)
+        # net_input_kernel.squeeze_()
+        net_input_kernel = net_input_kernel.type(dtype)
         # Losses
         mse = torch.nn.MSELoss().type(dtype)
         ssim_tensor = SSIM().type(dtype)
@@ -122,11 +124,11 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
 
                 # get the network output
                 if step == 0:
-                    out_x = net(net_input, weights=[nn.Parameter(w) for w in dip_weights[j]])
-                    out_k = net_kernel(net_input_kernel, weights=[nn.Parameter(w) for w in fcn_weights[j]])
+                    out_x = net(net_input[j], weights=[nn.Parameter(w) for w in dip_weights[j]])
+                    out_k = net_kernel(net_input_kernel[j], weights=[nn.Parameter(w) for w in fcn_weights[j]])
                 else:
-                    out_x = net(net_input)
-                    out_k = net_kernel(net_input_kernel)
+                    out_x = net(net_input[j])
+                    out_k = net_kernel(net_input_kernel[j])
 
                 out_k_m = out_k.view(-1, 1, opt.kernel_size[0], opt.kernel_size[1])
                 # print(out_k_m)
@@ -226,12 +228,14 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         to_log['final_mse_average'] = final_mse_average
         
         plt.figure()
+        plt.yscale('log')
         plt.plot(all_mse)
         plt.title('Average MSE over all images vs. training epoch')
         plt.xlabel('Training step')
         plt.ylabel('MSE loss')
         plt.savefig(os.path.join(validation_save_path, 'avg_mse_finetune.png'))
         plt.figure()
+        plt.yscale('log')
         plt.plot(all_psnr)
         plt.title('Average PSNR over all images vs. training epoch')
         plt.xlabel('Training step')
