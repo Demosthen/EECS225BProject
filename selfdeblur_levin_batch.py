@@ -21,6 +21,7 @@ from utils.common_utils import *
 from SSIM import SSIM
 from dataloader import get_dataloader
 import wandb
+from selfdeblur_levin_batch_evaluate import evaluate_hnet
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--num_epochs', type=int, default=50,
@@ -39,12 +40,18 @@ parser.add_argument('--save_path', type=str,
                     default="results/levin/hnet_models/", help='path to save results')
 parser.add_argument('--save_frequency', type=int,
                     default=10, help='lfrequency to save results')
+parser.add_argument('--l6_coeff', type=float,
+                    default=0, help="coefficient on L6 norm of kernel in loss function")
 parser.add_argument('--l1_coeff', type=float,
                     default=0, help="coefficient on L1 norm of kernel in loss function")
 parser.add_argument('--lr', type=float,
                     default=0.01, help="coefficient on L1 norm of kernel in loss function")
 parser.add_argument('--kernel_lr', type=float,
                     default=0.01, help="coefficient on L1 norm of kernel in loss function")
+parser.add_argument('--eval_freq', type=int,
+                    default=2, help="How many epochs to train between evaluations")
+parser.add_argument('--num_steps_per_epoch', type=int,
+                    default=None, help="How many batches to call an epoch. default is going through all the data once")
 opt = parser.parse_args()
 # print(opt)
 
@@ -93,15 +100,15 @@ net_kernel = HyperFCN(n_k, opt.kernel_size[0]*opt.kernel_size[1])
 net_kernel = net_kernel.type(dtype)
 net_kernel.train()
 
-hyper_dip = HyperNetwork(net)
+hyper_dip = HyperNetwork(net, dtype=dtype)
 hyper_dip = hyper_dip.type(dtype)
 hyper_dip.train()
 
-hyper_fcn = HyperNetwork(net_kernel)
+hyper_fcn = HyperNetwork(net_kernel, dtype=dtype)
 hyper_fcn = hyper_fcn.type(dtype)
 hyper_fcn.train()
 
-wandb.watch((hyper_fcn, hyper_dip, net, net_kernel), log_freq=1, log="all")
+wandb.watch((hyper_fcn, hyper_dip, net, net_kernel), log_freq=20, log="all")
 
 pre_softmax_kernel_activation = None
 
@@ -120,25 +127,28 @@ net_kernel.model[-1].register_forward_hook(hook)
 mse = torch.nn.MSELoss().type(dtype)
 ssim = SSIM().type(dtype)
 
-dataloader = get_dataloader(
-    opt.data_path, batch_size=opt.batch_size, shuffle=True)
-
 # optimizer
 optimizer = torch.optim.Adam([
-    {'params': hyper_dip.hnet.internal_params}, {'params': hyper_fcn.hnet.internal_params}], lr=LR)
+    {'params': hyper_dip.hnet.internal_params}, {'params': hyper_fcn.hnet.internal_params, "lr":KERNEL_LR}], lr=LR)
 scheduler = MultiStepLR(optimizer, milestones=[
                         opt.num_epochs // 5, opt.num_epochs // 4, opt.num_epochs // 2], gamma=0.5)  # learning rates
 
 
+dataloader = get_dataloader(
+    opt.data_path, batch_size=opt.batch_size, shuffle=True, use_gopro_data=("gopro" in opt.data_path))
 for epoch in range(opt.num_epochs):
     iterator = iter(dataloader)
     for i, (rgb, gt, rgb_path) in enumerate(iterator):
+        if opt.num_steps_per_epoch is not None and i >= opt.num_steps_per_epoch:
+            break
         print(f"Processing Epoch:{epoch} Batch: {i+1}")
         # Get our current batch size since it could be less than opt.batch_size
         batch_size = len(rgb)
 
         y = rgb.type(dtype)
         rgb = rgb.type(dtype)
+        rgb.requires_grad = False
+        y.requires_grad = False
 
         img_size = rgb.shape
         # ######################################################################
@@ -152,12 +162,14 @@ for epoch in range(opt.num_epochs):
 
         net_input = get_noise(input_depth, INPUT,
                               (opt.img_size[0], opt.img_size[1])).type(dtype)
+        net_input.requires_grad = False
 
         '''
         k_net:
         '''
         net_input_kernel = get_noise(n_k, INPUT, (1, 1)).type(dtype)
         net_input_kernel.squeeze_()
+        net_input_kernel.requires_grad=False
 
         # initilization inputs
         net_input_saved = net_input.detach().clone()
@@ -167,14 +179,14 @@ for epoch in range(opt.num_epochs):
         scheduler.step(epoch)
 
         # start SelfDeblur
-        for step in tqdm(range(num_iter)):
+        for substep in tqdm(range(num_iter)):
 
             # input regularization
             net_input = net_input_saved + reg_noise_std * \
                 torch.zeros(net_input_saved.shape).type_as(
                     net_input_saved.data).normal_()
+            # net_input_kernel = net_input_kernel_saved + reg_noise_std*torch.zeros(net_input_kernel_saved.shape).type_as(net_input_kernel_saved.data).normal_()
 
-            # change the learning rate
             optimizer.zero_grad()
 
             # get the network output
@@ -186,14 +198,17 @@ for epoch in range(opt.num_epochs):
             out_k_m = []
             out_y = []
             kernel_l1 = []
+            kernel_l6 = []
 
-            for i, img in enumerate(rgb):
-                out_x.append(net(net_input, weights=dip_weights[i]))
-                out_k = net_kernel(net_input_kernel, fcn_weights[i])
+            for j, img in enumerate(rgb):
+                out_x.append(net(net_input, weights=dip_weights[j]))
+                out_k = net_kernel(net_input_kernel, fcn_weights[j])
                 out_k_m.append(
                     out_k.view(-1, 1, opt.kernel_size[0], opt.kernel_size[1]))
                 kernel_l1.append(torch.norm(
                     pre_softmax_kernel_activation.view(-1, opt.kernel_size[0] * opt.kernel_size[1]), 1, -1))
+                kernel_l6.append(torch.norm(
+                    pre_softmax_kernel_activation.view(-1, opt.kernel_size[0] * opt.kernel_size[1]), 6, -1))
                 out_y.append(
                     F.conv2d(out_x[-1], out_k_m[-1], padding=0, bias=None))
             out_x = torch.stack(out_x)
@@ -201,32 +216,51 @@ for epoch in range(opt.num_epochs):
             out_y = torch.stack(out_y)
             kernel_l1 = torch.stack(kernel_l1)
             kernel_l1_loss = kernel_l1.mean()
+            kernel_l6 = torch.stack(kernel_l6)
+            kernel_l6_loss = kernel_l6.mean()
 
-            if step < (opt.num_epochs // 5):
+            if epoch < (opt.num_epochs // 5):
                 acc_loss = mse(out_y, y)
+                is_SSIM = 0
             else:
                 acc_loss = 1-ssim(out_y.squeeze(1), y)
+                is_SSIM = 1
 
-            total_loss = kernel_l1_loss * opt.l1_coeff + acc_loss
+            total_loss = acc_loss + kernel_l1_loss * opt.l1_coeff + kernel_l6_loss * opt.l6_coeff
 
             total_loss.backward()
             optimizer.step()
 
             to_log = {
-                "total_loss": total_loss,
-                "Kernel_L1_loss": kernel_l1_loss,
-                "Accuracy_loss": acc_loss,
+                "total_loss": total_loss.detach(),
+                "Kernel_L1_loss": kernel_l1_loss.detach(),
+                "Kernel_L6_loss": kernel_l6_loss.detach(),
+                "Accuracy_loss": acc_loss.detach(),
                 "Epoch": epoch,
                 "Learning rate 0": scheduler.get_lr()[0],
                 "Learning rate 1": scheduler.get_lr()[1],
+                "Using_SSIM": is_SSIM
             }
 
             # print the loss
-            if step % 10 == 0:
-                print("{}: {}".format(step, kernel_l1_loss.item()))
+            if i % 10 == 0:
+                print("{}: {}".format(substep, kernel_l1_loss.detach().item()))
 
-            if (step+1) % opt.save_frequency == 0:
+            if (i+1) % opt.save_frequency == 0:
                 #print('Iteration %05d' %(step+1))
+                out_x_nps = out_x.detach().cpu().numpy()
+                out_x_nps = out_x_nps.squeeze()
+                out_x_nps = out_x_nps[:, padh//2:padh//2 +
+                                    img_size[2], padw//2:padw//2+img_size[3]]
+
+                out_k_nps = out_k_m.detach().cpu().numpy()
+                out_k_nps = out_k_nps.squeeze()
+                out_k_nps /= np.max(out_k_nps)
+
+                out_y_nps = out_y.detach().cpu().numpy()
+                out_y_nps = out_y_nps.squeeze()
+                out_y_nps = out_y_nps[:, padh//2:padh//2 +
+                                    img_size[2], padw//2:padw//2+img_size[3]]
 
                 for n in range(batch_size):
                     path_to_image = rgb_path[n]
@@ -235,30 +269,27 @@ for epoch in range(opt.num_epochs):
 
                     save_path = os.path.join(
                         opt.save_path, '%s_x.png' % imgname)
-                    out_x_np = torch_to_np(out_x)
-                    out_x_np = out_x_np.squeeze()
-                    out_x_np = out_x_np[padh//2:padh//2 +
-                                        img_size[2], padw//2:padw//2+img_size[3]]
+                    out_x_np = out_x_nps[n]
                     imsave(save_path, out_x_np.astype(np.uint8))
 
                     save_path = os.path.join(
                         opt.save_path, '%s_k.png' % imgname)
-                    out_k_np = torch_to_np(out_k_m)
-                    out_k_np = out_k_np.squeeze()
-                    out_k_np /= np.max(out_k_np)
+
+                    out_k_np = out_k_nps[n]
                     imsave(save_path, out_k_np.astype(np.uint8))
 
-                    out_y_np = torch_to_np(out_y)
-                    out_y_np = out_y_np.squeeze()
-                    out_y_np = out_y_np[padh//2:padh//2 +
-                                        img_size[2], padw//2:padw//2+img_size[3]]
+                    out_y_np = out_y_nps[n]
 
                     # torch.save(net, os.path.join(
                     #     opt.save_path, "%s_xnet.pth" % imgname))
                     # torch.save(net_kernel, os.path.join(
                     #     opt.save_path, "%s_knet.pth" % imgname))
-                    to_log["prior"] = wandb.Image(out_x_np, mode="L")
-                    to_log["kernel"] = wandb.Image(out_k_np, mode="L")
-                    to_log["img"] = wandb.Image(out_y_np, mode="L")
-                    to_log["gt"] = wandb.Image(gt[n], mode="L")
+                    
+                to_log["prior"] = wandb.Image(out_x_np, mode="L")
+                to_log["kernel"] = wandb.Image(out_k_np, mode="L")
+                to_log["img"] = wandb.Image(out_y_np, mode="L")
+                to_log["gt"] = wandb.Image(gt[-1], mode="L")
             wandb.log(to_log)
+    if epoch % opt.eval_freq == 0:
+        to_log = evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, 1000, "results/levin/hnet_evaluation/")
+        wandb.log(to_log)

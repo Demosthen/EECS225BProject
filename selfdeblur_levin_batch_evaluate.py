@@ -26,7 +26,7 @@ from statistics import psnr, psnr_tensor, ssim
 def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, validation_save_path):
     output_img = 0
     validation_data_path = "datasets/test_data_loader/"
-    # validation_save_path = "results/levin/hnet_evaluation/"
+    os.makedirs(validation_save_path, exist_ok=True)
     INPUT = 'noise'
     reg_noise_std = 0.001
     imgs_to_track = [0, 9, 18, 27]
@@ -40,8 +40,10 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         torch.backends.cudnn.benchmark = False
         dtype = torch.FloatTensor
 
+    loader_batch_size  = 1
+
     dataloader = get_dataloader(
-        validation_data_path, batch_size=2, shuffle=False)
+        validation_data_path, batch_size=loader_batch_size, shuffle=False)
     print(f"Evaluating HNet")
 
     iterator = iter(dataloader)
@@ -90,6 +92,10 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         dip_weights = hyper_dip(rgb)
         fcn_weights = hyper_fcn(rgb)
 
+        if loader_batch_size == 1: 
+            dip_weights = [dip_weights]
+            fcn_weights = [fcn_weights]
+
         # initialize evaluation parameters
         psnr_total = 0
         ssim_total = 0
@@ -110,13 +116,14 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
                 net_input = net_input_saved + reg_noise_std * \
                     torch.zeros(net_input_saved.shape).type_as(
                         net_input_saved.data).normal_()
+                # net_input_kernel = net_input_kernel_saved + reg_noise_std*torch.zeros(net_input_kernel_saved.shape).type_as(net_input_kernel_saved.data).normal_()
 
                 optimizer.zero_grad()
 
                 # get the network output
                 if step == 0:
-                    out_x = net(net_input, weights=dip_weights[j])
-                    out_k = net_kernel(net_input_kernel, weights=fcn_weights[j])
+                    out_x = net(net_input, weights=[nn.Parameter(w) for w in dip_weights[j]])
+                    out_k = net_kernel(net_input_kernel, weights=[nn.Parameter(w) for w in fcn_weights[j]])
                 else:
                     out_x = net(net_input)
                     out_k = net_kernel(net_input_kernel)
@@ -136,7 +143,7 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
                 else:
                     total_loss = 1-curr_ssim
 
-                total_loss.backward(retain_graph=True)
+                total_loss.backward()
                 optimizer.step()
         
                 # adjust the learning rate based on scheduler
@@ -247,67 +254,67 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
 
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--num_epochs', type=int, default=50,
-                    help='number of epochs of training')
-parser.add_argument('--num_iter', type=int, default=50,
-                    help='number of iterations per image')
-parser.add_argument('--img_size', type=int,
-                    default=[256, 256], help='size of each image dimension')
-parser.add_argument('--kernel_size', type=int,
-                    default=[27, 27], help='size of blur kernel [height, width]')
-parser.add_argument('--data_path', type=str,
-                    default="datasets/test_data_loader/", help='path to blurry images')
-parser.add_argument('--batch_size', type=int,
-                    default=16, help='number of images in batch')
-parser.add_argument('--save_path', type=str,
-                    default="results/levin/hnet_models/", help='path to save results')
-parser.add_argument('--save_frequency', type=int,
-                    default=10, help='lfrequency to save results')
-parser.add_argument('--l1_coeff', type=float,
-                    default=0, help="coefficient on L1 norm of kernel in loss function")
-opt = parser.parse_args()
+# parser = argparse.ArgumentParser()
+# parser.add_argument('--num_epochs', type=int, default=50,
+#                     help='number of epochs of training')
+# parser.add_argument('--num_iter', type=int, default=50,
+#                     help='number of iterations per image')
+# parser.add_argument('--img_size', type=int,
+#                     default=[256, 256], help='size of each image dimension')
+# parser.add_argument('--kernel_size', type=int,
+#                     default=[27, 27], help='size of blur kernel [height, width]')
+# parser.add_argument('--data_path', type=str,
+#                     default="datasets/test_data_loader/", help='path to blurry images')
+# parser.add_argument('--batch_size', type=int,
+#                     default=16, help='number of images in batch')
+# parser.add_argument('--save_path', type=str,
+#                     default="results/levin/hnet_models/", help='path to save results')
+# parser.add_argument('--save_frequency', type=int,
+#                     default=10, help='lfrequency to save results')
+# parser.add_argument('--l1_coeff', type=float,
+#                     default=0, help="coefficient on L1 norm of kernel in loss function")
+# opt = parser.parse_args()
 
-if isinstance(opt.kernel_size, int):
-    opt.kernel_size = [opt.kernel_size, opt.kernel_size]
+# if isinstance(opt.kernel_size, int):
+#     opt.kernel_size = [opt.kernel_size, opt.kernel_size]
 
-# testing evaluate_hnet
-if torch.cuda.is_available():
-    torch.backends.cudnn.enabled = True
-    torch.backends.cudnn.benchmark = True
-    dtype = torch.cuda.FloatTensor
-else:
-    torch.backends.cudnn.enabled = False
-    torch.backends.cudnn.benchmark = False
-    dtype = torch.FloatTensor
+# # testing evaluate_hnet
+# if torch.cuda.is_available():
+#     torch.backends.cudnn.enabled = True
+#     torch.backends.cudnn.benchmark = True
+#     dtype = torch.cuda.FloatTensor
+# else:
+#     torch.backends.cudnn.enabled = False
+#     torch.backends.cudnn.benchmark = False
+#     dtype = torch.FloatTensor
 
 INPUT = 'noise'
 pad = 'reflection'
 LR = 0.01
 KERNEL_LR= 0.01
-num_iter = 5000
-reg_noise_std = 0.001
-input_depth = 8
+# num_iter = 5000
+# reg_noise_std = 0.001
+# input_depth = 8
 
 
-net = HyperDip(input_depth, 1,
-               num_channels_down=[128, 128, 128, 128, 128],
-               num_channels_up=[128, 128, 128, 128, 128],
-               num_channels_skip=[16, 16, 16, 16, 16],
-               upsample_mode='bilinear',
-               need_sigmoid=True, need_bias=True, pad='reflection', act_fun='LeakyReLU')
-net = net.type(dtype)
+# net = HyperDip(input_depth, 1,
+#                num_channels_down=[128, 128, 128, 128, 128],
+#                num_channels_up=[128, 128, 128, 128, 128],
+#                num_channels_skip=[16, 16, 16, 16, 16],
+#                upsample_mode='bilinear',
+#                need_sigmoid=True, need_bias=True, pad='reflection', act_fun='LeakyReLU')
+# net = net.type(dtype)
 
-n_k = 200
-net_kernel = HyperFCN(n_k, opt.kernel_size[0]*opt.kernel_size[1])
-net_kernel = net_kernel.type(dtype)
+# n_k = 200
+# net_kernel = HyperFCN(n_k, opt.kernel_size[0]*opt.kernel_size[1])
+# net_kernel = net_kernel.type(dtype)
 
-hyper_dip = HyperNetwork(net)
-hyper_dip = hyper_dip.type(dtype)
+# hyper_dip = HyperNetwork(net)
+# hyper_dip = hyper_dip.type(dtype)
 
-hyper_fcn = HyperNetwork(net_kernel)
-hyper_fcn = hyper_fcn.type(dtype)
+# hyper_fcn = HyperNetwork(net_kernel)
+# hyper_fcn = hyper_fcn.type(dtype)
 
-to_log = evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, 1000, "results/levin/hnet_evaluation/test/")
-run = wandb.init(project="EECS225BProject", entity="cs182rlproject")
-wandb.log(to_log)
+# to_log = evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, 1000, "results/levin/hnet_evaluation/test/")
+# run = wandb.init(project="EECS225BProject", entity="cs182rlproject")
+# wandb.log(to_log)
