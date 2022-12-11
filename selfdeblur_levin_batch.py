@@ -27,7 +27,7 @@ import time
 parser = argparse.ArgumentParser()
 parser.add_argument('--num_epochs', type=int, default=50,
                     help='number of epochs of training')
-parser.add_argument('--num_iter', type=int, default=50,
+parser.add_argument('--num_iter', type=int, default=5000,
                     help='number of iterations per image')
 parser.add_argument('--img_size', type=int,
                     default=[256, 256], help='size of each image dimension')
