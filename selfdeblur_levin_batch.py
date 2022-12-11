@@ -129,7 +129,7 @@ ssim = SSIM().type(dtype)
 
 # optimizer
 optimizer = torch.optim.Adam([
-    {'params': hyper_dip.hnet.internal_params}, {'params': hyper_fcn.hnet.internal_params}], lr=LR)
+    {'params': hyper_dip.hnet.internal_params}, {'params': hyper_fcn.hnet.internal_params, "lr":KERNEL_LR}], lr=LR)
 scheduler = MultiStepLR(optimizer, milestones=[
                         opt.num_epochs // 5, opt.num_epochs // 4, opt.num_epochs // 2], gamma=0.5)  # learning rates
 
@@ -147,7 +147,8 @@ for epoch in range(opt.num_epochs):
 
         y = rgb.type(dtype)
         rgb = rgb.type(dtype)
-        rgb.requires_grad=False
+        rgb.requires_grad = False
+        y.requires_grad = False
 
         img_size = rgb.shape
         # ######################################################################
@@ -230,10 +231,10 @@ for epoch in range(opt.num_epochs):
             optimizer.step()
 
             to_log = {
-                "total_loss": total_loss,
-                "Kernel_L1_loss": kernel_l1_loss,
-                "Kernel_L6_loss": kernel_l6_loss,
-                "Accuracy_loss": acc_loss,
+                "total_loss": total_loss.detach(),
+                "Kernel_L1_loss": kernel_l1_loss.detach(),
+                "Kernel_L6_loss": kernel_l6_loss.detach(),
+                "Accuracy_loss": acc_loss.detach(),
                 "Epoch": epoch,
                 "Learning rate 0": scheduler.get_lr()[0],
                 "Learning rate 1": scheduler.get_lr()[1],
@@ -242,7 +243,7 @@ for epoch in range(opt.num_epochs):
 
             # print the loss
             if i % 10 == 0:
-                print("{}: {}".format(substep, kernel_l1_loss.item()))
+                print("{}: {}".format(substep, kernel_l1_loss.detach().item()))
 
             if (i+1) % opt.save_frequency == 0:
                 #print('Iteration %05d' %(step+1))
