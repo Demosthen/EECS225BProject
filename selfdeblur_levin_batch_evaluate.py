@@ -125,7 +125,7 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
                 # get the network output
                 if step == 0:
                     out_x = net(net_input[j], weights=[nn.Parameter(w) for w in dip_weights[j]])
-                    out_k = net_kernel(net_input_kernel[j], weights=[nn.Parameter(w) for w in fcn_weights[j]])
+                    out_k = net_kernel(net_input_kernel[j])
                 else:
                     out_x = net(net_input[j])
                     out_k = net_kernel(net_input_kernel[j])
