@@ -69,12 +69,14 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         #                     (opt.img_size[0], opt.img_size[1])).type(dtype)
 
         net_input = net_input.type(dtype)
+        net_input.requires_grad = False
         '''
         k_net:
         '''
         # net_input_kernel = get_noise(n_k, INPUT, (1, 1)).type(dtype)
         # net_input_kernel.squeeze_()
         net_input_kernel = net_input_kernel.type(dtype)
+        net_input_kernel.requires_grad = False
         # Losses
         mse = torch.nn.MSELoss().type(dtype)
         ssim_tensor = SSIM().type(dtype)
