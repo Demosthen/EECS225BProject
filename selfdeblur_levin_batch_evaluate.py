@@ -183,8 +183,8 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
 
 
             # evaluate trained selfdeblur
-            out_x = net(net_input)
-            out_k = net_kernel(net_input_kernel) 
+            out_x = net(net_input[j])
+            out_k = net_kernel(net_input_kernel[j]) 
             out_k_m = out_k.view(-1, 1, opt.kernel_size[0], opt.kernel_size[1])
             
             out_x = out_x[...,padh//2:padh//2 +
