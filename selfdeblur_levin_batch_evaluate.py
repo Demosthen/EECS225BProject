@@ -53,7 +53,9 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         batch_size = len(rgb)
 
         y = gt.type(dtype)
+        y.requires_grad = False
         rgb = rgb.type(dtype)
+        rgb.requires_grad = False
 
         img_size = rgb.shape
         # ######################################################################
