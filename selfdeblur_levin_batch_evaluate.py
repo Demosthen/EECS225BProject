@@ -96,11 +96,11 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         # get the network output
 
         dip_weights = hyper_dip(rgb)
-        fcn_weights = hyper_fcn(rgb)
+        #fcn_weights = hyper_fcn(rgb)
 
         if loader_batch_size == 1: 
             dip_weights = [dip_weights]
-            fcn_weights = [fcn_weights]
+            #fcn_weights = [fcn_weights]
 
         # initialize evaluation parameters
         psnr_total = 0
@@ -122,6 +122,7 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
                 net_input = net_input_saved + reg_noise_std * \
                     torch.zeros(net_input_saved.shape).type_as(
                         net_input_saved.data).normal_()
+                net_input.requires_grad = False
                 # net_input_kernel = net_input_kernel_saved + reg_noise_std*torch.zeros(net_input_kernel_saved.shape).type_as(net_input_kernel_saved.data).normal_()
 
                 optimizer.zero_grad()
