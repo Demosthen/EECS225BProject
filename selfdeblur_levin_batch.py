@@ -53,6 +53,8 @@ parser.add_argument('--eval_freq', type=int,
                     default=2, help="How many epochs to train between evaluations")
 parser.add_argument('--num_steps_per_epoch', type=int,
                     default=None, help="How many batches to call an epoch. default is going through all the data once")
+parser.add_argument('--eval_num_iter', type=int,
+                    default=1000, help="How many iterations to run evaluation for")
 parser.add_argument('--run_original', action='store_true',
                     default=False, help="Run with original levin code")
 opt = parser.parse_args()
@@ -297,7 +299,7 @@ for epoch in range(opt.num_epochs):
     if epoch % opt.eval_freq == 0:
         start = time.time()
         to_log = evaluate_hnet(opt, hyper_dip, hyper_fcn, net,
-                               net_kernel, n_k, 5000, "results/levin/hnet_evaluation/", opt.run_original)
+                               net_kernel, n_k, opt.eval_num_iter, "results/levin/hnet_evaluation/", opt.run_original)
         end = time.time()
         to_log["Evaluation time"] = end - start
         wandb.log(to_log)
