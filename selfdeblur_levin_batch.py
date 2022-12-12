@@ -297,7 +297,7 @@ for epoch in range(opt.num_epochs):
     if epoch % opt.eval_freq == 0:
         start = time.time()
         to_log = evaluate_hnet(opt, hyper_dip, hyper_fcn, net,
-                               net_kernel, n_k, 1000, "results/levin/hnet_evaluation/", opt.run_original)
+                               net_kernel, n_k, 5000, "results/levin/hnet_evaluation/", opt.run_original)
         end = time.time()
         to_log["Evaluation time"] = end - start
         wandb.log(to_log)
