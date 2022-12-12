@@ -24,7 +24,7 @@ import wandb
 from statistics import psnr, psnr_tensor, ssim
 
 
-def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, validation_save_path, run_original=False):
+def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, validation_save_path, run_original=False, ignore_kernel=True):
     input_depth = 8
     validation_data_path = "datasets/test_data_loader/"
     os.makedirs(validation_save_path, exist_ok=True)
@@ -52,6 +52,7 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         net = net.type(dtype)
         net.train()
 
+    if run_original or ignore_kernel:
         n_k = 200
         net_kernel = HyperFCN(n_k, opt.kernel_size[0]*opt.kernel_size[1])
         net_kernel = net_kernel.type(dtype)
@@ -60,21 +61,24 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
 
     loader_batch_size = 32
 
+    padh, padw = opt.kernel_size[0]-1, opt.kernel_size[1]-1
     dataloader = get_dataloader(
-        validation_data_path, batch_size=loader_batch_size, shuffle=False)
+        validation_data_path, batch_size=loader_batch_size, shuffle=False, padh=padh, padw=padw)
     print(f"Evaluating HNet")
 
     iterator = iter(dataloader)
-    for i, (rgb, gt, rgb_path) in enumerate(iterator):
+    for i, (rgb, gt, rgb_path, net_input, net_input_kernel) in enumerate(iterator):
         # Get our current batch size since it could be less than opt.batch_size
         batch_size = len(rgb)
 
         y = gt.type(dtype)
+        y.requires_grad = False
         rgb = rgb.type(dtype)
+        rgb.requires_grad = False
 
         img_size = rgb.shape
         # ######################################################################
-        padh, padw = opt.kernel_size[0]-1, opt.kernel_size[1]-1
+        
         opt.img_size[0], opt.img_size[1] = img_size[2]+padh, img_size[3]+padw
 
         '''
@@ -82,15 +86,18 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         '''
         input_depth = 8
 
-        net_input = get_noise(input_depth, INPUT,
-                              (opt.img_size[0], opt.img_size[1])).type(dtype)
+        # net_input = get_noise(input_depth, INPUT,
+        #                     (opt.img_size[0], opt.img_size[1])).type(dtype)
 
+        net_input = net_input.type(dtype)
+        net_input.requires_grad = False
         '''
         k_net:
         '''
-        net_input_kernel = get_noise(n_k, INPUT, (1, 1)).type(dtype)
-        net_input_kernel.squeeze_()
-
+        # net_input_kernel = get_noise(n_k, INPUT, (1, 1)).type(dtype)
+        # net_input_kernel.squeeze_()
+        net_input_kernel = net_input_kernel.type(dtype)
+        net_input_kernel.requires_grad = False
         # Losses
         mse = torch.nn.MSELoss().type(dtype)
         ssim_tensor = SSIM().type(dtype)
@@ -104,17 +111,21 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         # initilization inputs
         net_input_saved = net_input.detach().clone()
         net_input_kernel_saved = net_input_kernel.detach().clone()
+        net_input_saved.requires_grad = False
+        net_input_kernel_saved.requires_grad = False
 
         # get the network output
 
         # don't run hypernetwork if running vanilla version
         if run_original == False:
             dip_weights = hyper_dip(rgb)
-            fcn_weights = hyper_fcn(rgb)
+            if not ignore_kernel:
+                fcn_weights = hyper_fcn(rgb)
 
             if loader_batch_size == 1:
                 dip_weights = [dip_weights]
-                fcn_weights = [fcn_weights]
+                if not ignore_kernel:
+                    fcn_weights = [fcn_weights]
 
         # initialize evaluation parameters
         psnr_total = 0
@@ -136,19 +147,23 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
                 net_input = net_input_saved + reg_noise_std * \
                     torch.zeros(net_input_saved.shape).type_as(
                         net_input_saved.data).normal_()
+                net_input.requires_grad = False
                 # net_input_kernel = net_input_kernel_saved + reg_noise_std*torch.zeros(net_input_kernel_saved.shape).type_as(net_input_kernel_saved.data).normal_()
 
                 optimizer.zero_grad()
 
                 # get the network output
                 if step == 0 and run_original == False:
-                    out_x = net(net_input, weights=[
+                    out_x = net(net_input[j], weights=[
                                 nn.Parameter(w) for w in dip_weights[j]])
-                    out_k = net_kernel(net_input_kernel, weights=[
-                                       nn.Parameter(w) for w in fcn_weights[j]])
+                    if ignore_kernel:
+                        out_k = net_kernel(net_input_kernel[j])
+                    else:
+                        out_k = net_kernel(net_input_kernel[j], weights=[
+                                    nn.Parameter(w) for w in fcn_weights[j]])
                 else:
-                    out_x = net(net_input)
-                    out_k = net_kernel(net_input_kernel)
+                    out_x = net(net_input[j])
+                    out_k = net_kernel(net_input_kernel[j])
 
                 out_k_m = out_k.view(-1, 1,
                                      opt.kernel_size[0], opt.kernel_size[1])
@@ -208,8 +223,8 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
                                f'_step_{step}.png'] = wandb.Image(out_k_np, mode='L')
 
             # evaluate trained selfdeblur
-            out_x = net(net_input)
-            out_k = net_kernel(net_input_kernel)
+            out_x = net(net_input[j])
+            out_k = net_kernel(net_input_kernel[j]) 
             out_k_m = out_k.view(-1, 1, opt.kernel_size[0], opt.kernel_size[1])
 
             out_x = out_x[..., padh//2:padh//2 +
@@ -255,12 +270,14 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         to_log['final_mse_average'] = final_mse_average
 
         plt.figure()
+        plt.yscale('log')
         plt.plot(all_mse)
         plt.title('Average MSE over all images vs. training epoch')
         plt.xlabel('Training step')
         plt.ylabel('MSE loss')
         plt.savefig(os.path.join(validation_save_path, 'avg_mse_finetune.png'))
         plt.figure()
+        plt.yscale('log')
         plt.plot(all_psnr)
         plt.title('Average PSNR over all images vs. training epoch')
         plt.xlabel('Training step')
