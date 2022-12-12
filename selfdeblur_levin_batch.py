@@ -292,5 +292,5 @@ for epoch in range(opt.num_epochs):
                 to_log["gt"] = wandb.Image(gt[-1], mode="L")
             wandb.log(to_log)
     if epoch % opt.eval_freq == 0:
-        to_log = evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, 1000, "results/levin/hnet_evaluation/")
+        to_log = evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, 5000, "results/levin/hnet_evaluation/")
         wandb.log(to_log)
