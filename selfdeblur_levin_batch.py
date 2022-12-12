@@ -22,11 +22,12 @@ from SSIM import SSIM
 from dataloader import get_dataloader
 import wandb
 from selfdeblur_levin_batch_evaluate import evaluate_hnet
+import time
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--num_epochs', type=int, default=50,
                     help='number of epochs of training')
-parser.add_argument('--num_iter', type=int, default=50,
+parser.add_argument('--num_iter', type=int, default=5000,
                     help='number of iterations per image')
 parser.add_argument('--img_size', type=int,
                     default=[256, 256], help='size of each image dimension')
@@ -35,7 +36,7 @@ parser.add_argument('--kernel_size', type=int,
 parser.add_argument('--data_path', type=str,
                     default="datasets/test_data_loader/", help='path to blurry images')
 parser.add_argument('--batch_size', type=int,
-                    default=16, help='number of images in batch')
+                    default=4, help='number of images in batch')
 parser.add_argument('--save_path', type=str,
                     default="results/levin/hnet_models/", help='path to save results')
 parser.add_argument('--save_frequency', type=int,
@@ -52,6 +53,10 @@ parser.add_argument('--eval_freq', type=int,
                     default=2, help="How many epochs to train between evaluations")
 parser.add_argument('--num_steps_per_epoch', type=int,
                     default=None, help="How many batches to call an epoch. default is going through all the data once")
+parser.add_argument('--eval_num_iter', type=int,
+                    default=1000, help="How many iterations to run evaluation for")
+parser.add_argument('--run_original', action='store_true',
+                    default=False, help="Run with original levin code")
 opt = parser.parse_args()
 # print(opt)
 
@@ -129,7 +134,7 @@ ssim = SSIM().type(dtype)
 
 # optimizer
 optimizer = torch.optim.Adam([
-    {'params': hyper_dip.hnet.internal_params}, {'params': hyper_fcn.hnet.internal_params, "lr":KERNEL_LR}], lr=LR)
+    {'params': hyper_dip.hnet.internal_params}, {'params': hyper_fcn.hnet.internal_params, "lr": KERNEL_LR}], lr=LR)
 scheduler = MultiStepLR(optimizer, milestones=[
                         opt.num_epochs // 5, opt.num_epochs // 4, opt.num_epochs // 2], gamma=0.5)  # learning rates
 
@@ -227,7 +232,8 @@ for epoch in range(opt.num_epochs):
                 acc_loss = 1-ssim(out_y.squeeze(1), y)
                 is_SSIM = 1
 
-            total_loss = acc_loss + kernel_l1_loss * opt.l1_coeff + kernel_l6_loss * opt.l6_coeff
+            total_loss = acc_loss + kernel_l1_loss * \
+                opt.l1_coeff + kernel_l6_loss * opt.l6_coeff
 
             total_loss.backward()
             optimizer.step()
@@ -244,15 +250,15 @@ for epoch in range(opt.num_epochs):
             }
 
             # print the loss
-            if i % 10 == 0:
-                print("{}: {}".format(substep, kernel_l1_loss.detach().item()))
+            # if i % 10 == 0:
+            #     print("{}: {}".format(substep, kernel_l1_loss.detach().item()))
 
             if (i+1) % opt.save_frequency == 0:
                 #print('Iteration %05d' %(step+1))
                 out_x_nps = out_x.detach().cpu().numpy()
                 out_x_nps = out_x_nps.squeeze()
                 out_x_nps = out_x_nps[:, padh//2:padh//2 +
-                                    img_size[2], padw//2:padw//2+img_size[3]]
+                                      img_size[2], padw//2:padw//2+img_size[3]]
 
                 out_k_nps = out_k_m.detach().cpu().numpy()
                 out_k_nps = out_k_nps.squeeze()
@@ -261,7 +267,7 @@ for epoch in range(opt.num_epochs):
                 out_y_nps = out_y.detach().cpu().numpy()
                 out_y_nps = out_y_nps.squeeze()
                 out_y_nps = out_y_nps[:, padh//2:padh//2 +
-                                    img_size[2], padw//2:padw//2+img_size[3]]
+                                      img_size[2], padw//2:padw//2+img_size[3]]
 
                 for n in range(batch_size):
                     path_to_image = rgb_path[n]
@@ -271,13 +277,13 @@ for epoch in range(opt.num_epochs):
                     save_path = os.path.join(
                         opt.save_path, '%s_x.png' % imgname)
                     out_x_np = out_x_nps[n]
-                    imsave(save_path, out_x_np.astype(np.uint8))
+                    # imsave(save_path, out_x_np.astype(np.uint8))
 
                     save_path = os.path.join(
                         opt.save_path, '%s_k.png' % imgname)
 
                     out_k_np = out_k_nps[n]
-                    imsave(save_path, out_k_np.astype(np.uint8))
+                    # imsave(save_path, out_k_np.astype(np.uint8))
 
                     out_y_np = out_y_nps[n]
 
@@ -285,12 +291,16 @@ for epoch in range(opt.num_epochs):
                     #     opt.save_path, "%s_xnet.pth" % imgname))
                     # torch.save(net_kernel, os.path.join(
                     #     opt.save_path, "%s_knet.pth" % imgname))
-                    
+
                 to_log["prior"] = wandb.Image(out_x_np, mode="L")
                 to_log["kernel"] = wandb.Image(out_k_np, mode="L")
                 to_log["img"] = wandb.Image(out_y_np, mode="L")
                 to_log["gt"] = wandb.Image(gt[-1], mode="L")
             wandb.log(to_log)
     if epoch % opt.eval_freq == 0:
-        to_log = evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, 5000, "results/levin/hnet_evaluation/")
+        start = time.time()
+        to_log = evaluate_hnet(opt, hyper_dip, hyper_fcn, net,
+                               net_kernel, n_k, opt.eval_num_iter, "results/levin/hnet_evaluation/", opt.run_original)
+        end = time.time()
+        to_log["Evaluation time"] = end - start
         wandb.log(to_log)
