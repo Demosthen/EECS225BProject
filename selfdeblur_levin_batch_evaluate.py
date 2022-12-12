@@ -52,6 +52,7 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         net = net.type(dtype)
         net.train()
 
+    if run_original or ignore_kernel:
         n_k = 200
         net_kernel = HyperFCN(n_k, opt.kernel_size[0]*opt.kernel_size[1])
         net_kernel = net_kernel.type(dtype)
@@ -110,17 +111,21 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         # initilization inputs
         net_input_saved = net_input.detach().clone()
         net_input_kernel_saved = net_input_kernel.detach().clone()
+        net_input_saved.requires_grad = False
+        net_input_kernel_saved.requires_grad = False
 
         # get the network output
 
         # don't run hypernetwork if running vanilla version
         if run_original == False:
             dip_weights = hyper_dip(rgb)
-            fcn_weights = hyper_fcn(rgb) if not ignore_kernel else None
+            if not ignore_kernel:
+                fcn_weights = hyper_fcn(rgb)
 
             if loader_batch_size == 1:
                 dip_weights = [dip_weights]
-                fcn_weights = [fcn_weights] if not ignore_kernel else None
+                if not ignore_kernel:
+                    fcn_weights = [fcn_weights]
 
         # initialize evaluation parameters
         psnr_total = 0
