@@ -3,7 +3,7 @@ from torchvision.datasets.folder import default_loader
 from torchvision.datasets.vision import VisionDataset
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
-from torchvision.transforms import ToTensor
+from torchvision.transforms import ToTensor, Grayscale, Compose
 import os
 from utils.common_utils import *
 
@@ -60,7 +60,7 @@ class InputGTDataset(VisionDataset):
 
 
 def get_dataloader(root: str, batch_size: int, shuffle: bool, compare_func=None):
-    transforms = ToTensor()
+    transforms = Compose([ToTensor(), Grayscale(3)])
     dataset = InputGTDataset(
         root, compare_func, input_transform=transforms, gt_transform=transforms)
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)

@@ -173,7 +173,7 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations):
 
         to_log = {
             "psnr average": psnr_average,
-            "mse average": ssim_average
+            "ssim average": ssim_average
         }
 
         wandb.log(to_log)
