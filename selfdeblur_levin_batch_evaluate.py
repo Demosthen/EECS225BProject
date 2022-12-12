@@ -25,8 +25,7 @@ from statistics import psnr, psnr_tensor, ssim
 
 
 def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, validation_save_path, run_original=False):
-
-    output_img = 0
+    input_depth = 8
     validation_data_path = "datasets/test_data_loader/"
     os.makedirs(validation_save_path, exist_ok=True)
     INPUT = 'noise'
