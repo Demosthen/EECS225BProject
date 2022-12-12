@@ -58,7 +58,7 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         net_kernel.train()
     # end vanilla ver
 
-    loader_batch_size = 1
+    loader_batch_size = 32
 
     dataloader = get_dataloader(
         validation_data_path, batch_size=loader_batch_size, shuffle=False)
