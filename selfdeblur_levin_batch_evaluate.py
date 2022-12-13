@@ -258,13 +258,9 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
                 to_log['kernel_from_' + imgname +
                        '_final.png'] = wandb.Image(out_k_np, mode="L")
 
-
         all_mse /= len(imgs_to_track)
-        np.putmask(all_mse, all_mse > 10^10, 1)
         all_psnr /= len(imgs_to_track)
-        np.putmask(all_psnr, all_psnr > 10^10, 1)
         all_ssim /= len(imgs_to_track)
-        np.putmask(all_ssim, all_ssim > 10^10, 1)
 
         final_psnr_average = psnr_total / len(imgs_to_track)
         final_ssim_average = ssim_total / len(imgs_to_track)
@@ -372,6 +368,6 @@ KERNEL_LR = 0.01
 # hyper_fcn = HyperNetwork(net_kernel, dtype=dtype)
 # hyper_fcn = hyper_fcn.type(dtype)
 
-# to_log = evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, 1, "results/levin/hnet_evaluation/test/")
+# to_log = evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, 5000, "results/levin/hnet_evaluation/test/")
 # run = wandb.init(project="EECS225BProject", entity="cs182rlproject")
 # wandb.log(to_log)
