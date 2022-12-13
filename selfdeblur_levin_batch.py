@@ -1,5 +1,6 @@
 
 from __future__ import print_function
+from copy import deepcopy
 import matplotlib.pyplot as plt
 import argparse
 import os
@@ -144,7 +145,7 @@ scheduler = MultiStepLR(optimizer, milestones=[
 
 padh, padw = opt.kernel_size[0]-1, opt.kernel_size[1]-1
 dataloader = get_dataloader(
-    opt.data_path, batch_size=opt.batch_size, shuffle=True, use_gopro_data=("gopro" in opt.data_path), padh=padh, padw=padw)
+    opt.data_path, batch_size=opt.batch_size, shuffle=True, use_gopro_data=("gopro" in opt.data_path))
 for epoch in range(opt.num_epochs):
     iterator = iter(dataloader)
     for i, (rgb, gt, rgb_path, net_input, net_input_kernel) in enumerate(iterator):
@@ -170,6 +171,7 @@ for epoch in range(opt.num_epochs):
 
         # net_input = get_noise(input_depth, INPUT,
         #                       (opt.img_size[0], opt.img_size[1])).type(dtype)
+        net_input = net_input[..., :opt.img_size[0], :opt.img_size[1]]
         net_input = net_input.type(dtype)
         net_input.requires_grad = False
 
@@ -303,7 +305,7 @@ for epoch in range(opt.num_epochs):
             wandb.log(to_log)
     if epoch % opt.eval_freq == 0:
         start = time.time()
-        to_log = evaluate_hnet(opt, hyper_dip, hyper_fcn, net,
+        to_log = evaluate_hnet(deepcopy(opt), hyper_dip, hyper_fcn, net,
                                net_kernel, n_k, opt.eval_num_iter, opt.eval_data_path, opt.run_original, opt.ignore_kernel)
         end = time.time()
         to_log["Evaluation time"] = end - start

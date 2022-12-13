@@ -41,13 +41,10 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         torch.backends.cudnn.benchmark = False
         dtype = torch.FloatTensor
 
-    
-
     loader_batch_size = 32
 
-    padh, padw = opt.kernel_size[0]-1, opt.kernel_size[1]-1
     dataloader = get_dataloader(
-        validation_data_path, batch_size=loader_batch_size, shuffle=False, padh=padh, padw=padw)
+        validation_data_path, batch_size=loader_batch_size, shuffle=False)
     print(f"Evaluating HNet")
 
     iterator = iter(dataloader)
@@ -63,7 +60,7 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         img_size = rgb.shape
         # ######################################################################
         
-        opt.img_size[0], opt.img_size[1] = img_size[2]+padh, img_size[3]+padw
+        
 
         '''
         x_net:
@@ -72,7 +69,6 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
 
         # net_input = get_noise(input_depth, INPUT,
         #                     (opt.img_size[0], opt.img_size[1])).type(dtype)
-
         net_input = net_input.type(dtype)
         net_input.requires_grad = False
         '''
@@ -119,7 +115,28 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         # initialize logging dict
         to_log = {}
 
-        for j, img in enumerate(rgb):
+        for j, (img, imgname) in enumerate(zip(rgb, rgb_path)):
+
+            if imgname.find('kernel1') != -1:
+                opt.kernel_size = [17, 17]
+            if imgname.find('kernel2') != -1:
+                opt.kernel_size = [15, 15]
+            if imgname.find('kernel3') != -1:
+                opt.kernel_size = [13, 13]
+            if imgname.find('kernel4') != -1:
+                opt.kernel_size = [27, 27]
+            if imgname.find('kernel5') != -1:
+                opt.kernel_size = [11, 11]
+            if imgname.find('kernel6') != -1:
+                opt.kernel_size = [19, 19]
+            if imgname.find('kernel7') != -1:
+                opt.kernel_size = [21, 21]
+            if imgname.find('kernel8') != -1:
+                opt.kernel_size = [21, 21]
+
+            padh, padw = opt.kernel_size[0]-1, opt.kernel_size[1]-1
+            opt.img_size[0], opt.img_size[1] = img_size[2]+padh, img_size[3]+padw
+
             if run_original or ignore_kernel:
                 n_k = 200
                 net_kernel = HyperFCN(n_k, opt.kernel_size[0]*opt.kernel_size[1])
@@ -146,17 +163,18 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
             for step in tqdm(range(iterations)):
 
                 # input regularization
-                net_input = net_input_saved + reg_noise_std * \
-                    torch.zeros(net_input_saved.shape).type_as(
-                        net_input_saved.data).normal_()
-                net_input.requires_grad = False
+                curr_net_input = net_input_saved[j] + reg_noise_std * \
+                    torch.zeros(net_input_saved[j].shape).type_as(
+                        net_input_saved[j].data).normal_()
+                curr_net_input = curr_net_input[..., :opt.img_size[0], :opt.img_size[1]]
+                curr_net_input.requires_grad = False
                 # net_input_kernel = net_input_kernel_saved + reg_noise_std*torch.zeros(net_input_kernel_saved.shape).type_as(net_input_kernel_saved.data).normal_()
 
                 optimizer.zero_grad()
 
                 # get the network output
                 if step == 0 and run_original == False:
-                    out_x = net(net_input[j], weights=[
+                    out_x = net(curr_net_input, weights=[
                                 nn.Parameter(w) for w in dip_weights[j]])
                     if ignore_kernel:
                         out_k = net_kernel(net_input_kernel[j])
@@ -164,9 +182,8 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
                         out_k = net_kernel(net_input_kernel[j], weights=[
                                     nn.Parameter(w) for w in fcn_weights[j]])
                 else:
-                    out_x = net(net_input[j])
+                    out_x = net(curr_net_input)
                     out_k = net_kernel(net_input_kernel[j])
-
                 out_k_m = out_k.view(-1, 1,
                                      opt.kernel_size[0], opt.kernel_size[1])
                 # print(out_k_m)
