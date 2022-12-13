@@ -41,17 +41,7 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         torch.backends.cudnn.benchmark = False
         dtype = torch.FloatTensor
 
-    # run vanilla ver
-    if run_original:
-        net = HyperDip(input_depth, 1,
-                       num_channels_down=[128, 128, 128, 128, 128],
-                       num_channels_up=[128, 128, 128, 128, 128],
-                       num_channels_skip=[16, 16, 16, 16, 16],
-                       upsample_mode='bilinear',
-                       need_sigmoid=True, need_bias=True, pad='reflection', act_fun='LeakyReLU')
-        net = net.type(dtype)
-        net.train()
-    # end vanilla ver
+    
 
     loader_batch_size = 32
 
@@ -135,6 +125,18 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
                 net_kernel = HyperFCN(n_k, opt.kernel_size[0]*opt.kernel_size[1])
                 net_kernel = net_kernel.type(dtype)
                 net_kernel.train()
+
+            # run vanilla ver
+            if run_original:
+                net = HyperDip(input_depth, 1,
+                            num_channels_down=[128, 128, 128, 128, 128],
+                            num_channels_up=[128, 128, 128, 128, 128],
+                            num_channels_skip=[16, 16, 16, 16, 16],
+                            upsample_mode='bilinear',
+                            need_sigmoid=True, need_bias=True, pad='reflection', act_fun='LeakyReLU')
+                net = net.type(dtype)
+                net.train()
+            # end vanilla ver
             # train SelfDeblur
             all_psnr = np.zeros(iterations)
             all_ssim = np.zeros(iterations)
