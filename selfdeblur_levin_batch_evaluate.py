@@ -82,12 +82,6 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         mse = torch.nn.MSELoss().type(dtype)
         ssim_tensor = SSIM().type(dtype)
 
-        # optimizer
-        optimizer = torch.optim.Adam([{'params': net.parameters()}, {
-            'params': net_kernel.parameters(), 'lr': 1e-4}], lr=LR)
-        scheduler = MultiStepLR(optimizer, milestones=[
-                                2000, 3000, 4000], gamma=0.5)  # learning rates
-
         # initilization inputs
         net_input_saved = net_input.detach().clone()
         net_input_kernel_saved = net_input_kernel.detach().clone()
@@ -119,7 +113,8 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         to_log = {}
 
         for j, (img, imgname) in enumerate(zip(rgb, rgb_path)):
-
+            if j not in imgs_to_track:
+                continue
             if imgname.find('kernel1') != -1:
                 opt.kernel_size = [17, 17]
             if imgname.find('kernel2') != -1:
@@ -157,9 +152,13 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
                 net = net.type(dtype)
                 net.train()
             # end vanilla ver
+            # optimizer
+            optimizer = torch.optim.Adam([{'params': net.parameters()}, {
+                'params': net_kernel.parameters(), 'lr': 1e-4}], lr=LR)
+            scheduler = MultiStepLR(optimizer, milestones=[
+                                    2000, 3000, 4000], gamma=0.5)  # learning rates
             # train SelfDeblur
-            if j not in imgs_to_track:
-                continue
+            
             for step in tqdm(range(iterations)):
 
                 # input regularization
