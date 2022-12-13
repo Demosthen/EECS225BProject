@@ -294,14 +294,12 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
             to_log[f'mse_average_{i}'] = all_mse[k]
 
         plt.figure()
-        plt.yscale('log')
         plt.plot(all_mse)
         plt.title('Average MSE over all images vs. training epoch')
         plt.xlabel('Training step')
         plt.ylabel('MSE loss')
         plt.savefig(os.path.join(validation_save_path, 'avg_mse_finetune.png'))
         plt.figure()
-        plt.yscale('log')
         plt.plot(all_psnr)
         plt.title('Average PSNR over all images vs. training epoch')
         plt.xlabel('Training step')
