@@ -326,7 +326,7 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
 INPUT = 'noise'
 pad = 'reflection'
 LR = 0.01
-KERNEL_LR = 0.001
+KERNEL_LR = 0.0001
 
 # parser = argparse.ArgumentParser()
 # parser.add_argument('--num_epochs', type=int, default=50,
