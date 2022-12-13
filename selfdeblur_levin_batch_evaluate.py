@@ -154,7 +154,7 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
             # end vanilla ver
             # optimizer
             optimizer = torch.optim.Adam([{'params': net.parameters()}, {
-                'params': net_kernel.parameters(), 'lr': 1e-4}], lr=LR)
+                'params': net_kernel.parameters(), 'lr': KERNEL_LR}], lr=LR)
             scheduler = MultiStepLR(optimizer, milestones=[
                                     2000, 3000, 4000], gamma=0.5)  # learning rates
             # train SelfDeblur
@@ -325,7 +325,7 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
 
 INPUT = 'noise'
 pad = 'reflection'
-LR = 0.01
+LR = 0.001
 KERNEL_LR = 0.01
 
 # parser = argparse.ArgumentParser()
