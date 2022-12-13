@@ -21,7 +21,7 @@ from utils.common_utils import *
 from SSIM import SSIM
 from dataloader import get_dataloader
 import wandb
-from statistics import psnr, psnr_tensor, ssim
+from statistics import psnr, psnr_tensor, ssim, psnr_color
 
 
 def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, validation_save_path, run_original=False, ignore_kernel=True):
@@ -254,7 +254,7 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
 
             out_y = y[j]
             out_y_np = torch_to_np(out_y)
-            psnr_total += psnr(out_x_np, out_y_np)
+            psnr_total += psnr_color(out_x_np, out_y_np)
             ssim_total += ssim(out_x_np, out_y_np)
             mse_total += mse(out_x, out_y)
             path_to_image = rgb_path[j]
@@ -326,7 +326,7 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
 INPUT = 'noise'
 pad = 'reflection'
 LR = 0.001
-KERNEL_LR = 0.01
+KERNEL_LR = 0.001
 
 # parser = argparse.ArgumentParser()
 # parser.add_argument('--num_epochs', type=int, default=50,
