@@ -254,7 +254,7 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
 
             out_y = y[j]
             out_y_np = torch_to_np(out_y)
-            psnr_total += psnr_color(out_x_np, out_y_np)
+            psnr_total += psnr(out_x_np, out_y_np)
             ssim_total += ssim(out_x_np, out_y_np)
             mse_total += mse(out_x, out_y)
             path_to_image = rgb_path[j]
