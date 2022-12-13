@@ -140,7 +140,8 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
             all_psnr = np.empty(iterations)
             all_ssim = np.empty(iterations)
             all_mse = np.empty(iterations)
-
+            if j not in imgs_to_track:
+                continue
             for step in tqdm(range(iterations)):
 
                 # input regularization
@@ -257,13 +258,13 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
                 to_log['kernel_from_' + imgname +
                        '_final.png'] = wandb.Image(out_k_np, mode="L")
 
-        all_mse /= len(rgb)
-        all_psnr /= len(rgb)
-        all_ssim /= len(rgb)
+        all_mse /= len(imgs_to_track)
+        all_psnr /= len(imgs_to_track)
+        all_ssim /= len(imgs_to_track)
 
-        final_psnr_average = psnr_total / len(rgb)
-        final_ssim_average = ssim_total / len(rgb)
-        final_mse_average = mse_total / len(rgb)
+        final_psnr_average = psnr_total / len(imgs_to_track)
+        final_ssim_average = ssim_total / len(imgs_to_track)
+        final_mse_average = mse_total / len(imgs_to_track)
 
         to_log['final_psnr_average'] = final_psnr_average
         to_log['final_ssim_average'] = final_ssim_average
