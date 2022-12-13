@@ -59,6 +59,8 @@ parser.add_argument('--run_original', action='store_true',
                     default=False, help="Run with original levin code")
 parser.add_argument('--ignore_kernel', action='store_true',
                     default=False, help="Whether or not to reinitialize kernel at evaluation")
+parser.add_argument('--eval_data_path', type=str,
+                    default="results/levin/hnet_evaluation/", help="path to save eval results to")
 opt = parser.parse_args()
 # print(opt)
 
@@ -302,7 +304,7 @@ for epoch in range(opt.num_epochs):
     if epoch % opt.eval_freq == 0:
         start = time.time()
         to_log = evaluate_hnet(opt, hyper_dip, hyper_fcn, net,
-                               net_kernel, n_k, opt.eval_num_iter, "results/levin/hnet_evaluation/", opt.run_original, opt.ignore_kernel)
+                               net_kernel, n_k, opt.eval_num_iter, opt.eval_data_path, opt.run_original, opt.ignore_kernel)
         end = time.time()
         to_log["Evaluation time"] = end - start
         wandb.log(to_log)
