@@ -325,7 +325,7 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
 
 INPUT = 'noise'
 pad = 'reflection'
-LR = 0.001
+LR = 0.01
 KERNEL_LR = 0.001
 
 # parser = argparse.ArgumentParser()
