@@ -131,15 +131,15 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         psnr_total = 0
         ssim_total = 0
         mse_total = 0
+        all_psnr = np.zeros(iterations)
+        all_ssim = np.zeros(iterations)
+        all_mse = np.zeros(iterations)
 
         # initialize logging dict
         to_log = {}
 
         for j, img in enumerate(rgb):
             # train SelfDeblur
-            all_psnr = np.zeros(iterations)
-            all_ssim = np.zeros(iterations)
-            all_mse = np.zeros(iterations)
             if j not in imgs_to_track:
                 continue
             for step in tqdm(range(iterations)):
@@ -368,6 +368,6 @@ KERNEL_LR = 0.01
 # hyper_fcn = HyperNetwork(net_kernel, dtype=dtype)
 # hyper_fcn = hyper_fcn.type(dtype)
 
-# to_log = evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, 5000, "results/levin/hnet_evaluation/test/")
+# to_log = evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, 5, "results/levin/hnet_evaluation/test/")
 # run = wandb.init(project="EECS225BProject", entity="cs182rlproject")
 # wandb.log(to_log)
