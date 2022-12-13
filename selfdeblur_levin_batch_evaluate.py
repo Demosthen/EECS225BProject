@@ -137,9 +137,9 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
 
         for j, img in enumerate(rgb):
             # train SelfDeblur
-            all_psnr = np.empty(iterations)
-            all_ssim = np.empty(iterations)
-            all_mse = np.empty(iterations)
+            all_psnr = np.zeros(iterations)
+            all_ssim = np.zeros(iterations)
+            all_mse = np.zeros(iterations)
             if j not in imgs_to_track:
                 continue
             for step in tqdm(range(iterations)):
@@ -258,9 +258,13 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
                 to_log['kernel_from_' + imgname +
                        '_final.png'] = wandb.Image(out_k_np, mode="L")
 
+
         all_mse /= len(imgs_to_track)
+        np.putmask(all_mse, all_mse > 10^10, 1)
         all_psnr /= len(imgs_to_track)
+        np.putmask(all_psnr, all_psnr > 10^10, 1)
         all_ssim /= len(imgs_to_track)
+        np.putmask(all_ssim, all_ssim > 10^10, 1)
 
         final_psnr_average = psnr_total / len(imgs_to_track)
         final_ssim_average = ssim_total / len(imgs_to_track)
@@ -269,6 +273,11 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         to_log['final_psnr_average'] = final_psnr_average
         to_log['final_ssim_average'] = final_ssim_average
         to_log['final_mse_average'] = final_mse_average
+
+        for k in range(0, iterations, 1000):
+            to_log[f'psnr_average_{i}'] = all_psnr[k]
+            to_log[f'ssim_average_{i}'] = all_ssim[k]
+            to_log[f'mse_average_{i}'] = all_mse[k]
 
         plt.figure()
         plt.yscale('log')
@@ -303,6 +312,10 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         # return statistics
         return to_log
 
+INPUT = 'noise'
+pad = 'reflection'
+LR = 0.01
+KERNEL_LR = 0.01
 
 # parser = argparse.ArgumentParser()
 # parser.add_argument('--num_epochs', type=int, default=50,
@@ -336,10 +349,6 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
 #     torch.backends.cudnn.enabled = False
 #     torch.backends.cudnn.benchmark = False
 #     dtype = torch.FloatTensor
-INPUT = 'noise'
-pad = 'reflection'
-LR = 0.01
-KERNEL_LR = 0.01
 # num_iter = 5000
 # reg_noise_std = 0.001
 # input_depth = 8
@@ -357,12 +366,12 @@ KERNEL_LR = 0.01
 # net_kernel = HyperFCN(n_k, opt.kernel_size[0]*opt.kernel_size[1])
 # net_kernel = net_kernel.type(dtype)
 
-# hyper_dip = HyperNetwork(net)
+# hyper_dip = HyperNetwork(net, dtype=dtype)
 # hyper_dip = hyper_dip.type(dtype)
 
-# hyper_fcn = HyperNetwork(net_kernel)
+# hyper_fcn = HyperNetwork(net_kernel, dtype=dtype)
 # hyper_fcn = hyper_fcn.type(dtype)
 
-# to_log = evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, 1000, "results/levin/hnet_evaluation/test/")
+# to_log = evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, 1, "results/levin/hnet_evaluation/test/")
 # run = wandb.init(project="EECS225BProject", entity="cs182rlproject")
 # wandb.log(to_log)
