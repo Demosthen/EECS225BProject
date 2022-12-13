@@ -51,12 +51,6 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
                        need_sigmoid=True, need_bias=True, pad='reflection', act_fun='LeakyReLU')
         net = net.type(dtype)
         net.train()
-
-    if run_original or ignore_kernel:
-        n_k = 200
-        net_kernel = HyperFCN(n_k, opt.kernel_size[0]*opt.kernel_size[1])
-        net_kernel = net_kernel.type(dtype)
-        net_kernel.train()
     # end vanilla ver
 
     loader_batch_size = 32
@@ -136,6 +130,11 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         to_log = {}
 
         for j, img in enumerate(rgb):
+            if run_original or ignore_kernel:
+                n_k = 200
+                net_kernel = HyperFCN(n_k, opt.kernel_size[0]*opt.kernel_size[1])
+                net_kernel = net_kernel.type(dtype)
+                net_kernel.train()
             # train SelfDeblur
             all_psnr = np.zeros(iterations)
             all_ssim = np.zeros(iterations)
