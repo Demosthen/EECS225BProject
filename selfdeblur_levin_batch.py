@@ -57,6 +57,10 @@ parser.add_argument('--eval_num_iter', type=int,
                     default=1000, help="How many iterations to run evaluation for")
 parser.add_argument('--run_original', action='store_true',
                     default=False, help="Run with original levin code")
+parser.add_argument('--ignore_kernel', action='store_true',
+                    default=False, help="Whether or not to reinitialize kernel at evaluation")
+parser.add_argument('--eval_data_path', type=str,
+                    default="results/levin/hnet_evaluation/", help="path to save eval results to")
 opt = parser.parse_args()
 # print(opt)
 
@@ -138,12 +142,12 @@ optimizer = torch.optim.Adam([
 scheduler = MultiStepLR(optimizer, milestones=[
                         opt.num_epochs // 5, opt.num_epochs // 4, opt.num_epochs // 2], gamma=0.5)  # learning rates
 
-
+padh, padw = opt.kernel_size[0]-1, opt.kernel_size[1]-1
 dataloader = get_dataloader(
-    opt.data_path, batch_size=opt.batch_size, shuffle=True, use_gopro_data=("gopro" in opt.data_path))
+    opt.data_path, batch_size=opt.batch_size, shuffle=True, use_gopro_data=("gopro" in opt.data_path), padh=padh, padw=padw)
 for epoch in range(opt.num_epochs):
     iterator = iter(dataloader)
-    for i, (rgb, gt, rgb_path) in enumerate(iterator):
+    for i, (rgb, gt, rgb_path, net_input, net_input_kernel) in enumerate(iterator):
         if opt.num_steps_per_epoch is not None and i >= opt.num_steps_per_epoch:
             break
         print(f"Processing Epoch:{epoch} Batch: {i+1}")
@@ -157,7 +161,6 @@ for epoch in range(opt.num_epochs):
 
         img_size = rgb.shape
         # ######################################################################
-        padh, padw = opt.kernel_size[0]-1, opt.kernel_size[1]-1
         opt.img_size[0], opt.img_size[1] = img_size[2]+padh, img_size[3]+padw
 
         '''
@@ -165,15 +168,17 @@ for epoch in range(opt.num_epochs):
         '''
         input_depth = 8
 
-        net_input = get_noise(input_depth, INPUT,
-                              (opt.img_size[0], opt.img_size[1])).type(dtype)
+        # net_input = get_noise(input_depth, INPUT,
+        #                       (opt.img_size[0], opt.img_size[1])).type(dtype)
+        net_input = net_input.type(dtype)
         net_input.requires_grad = False
 
         '''
         k_net:
         '''
-        net_input_kernel = get_noise(n_k, INPUT, (1, 1)).type(dtype)
-        net_input_kernel.squeeze_()
+        # net_input_kernel = get_noise(n_k, INPUT, (1, 1)).type(dtype)
+        # net_input_kernel.squeeze_()
+        net_input_kernel = net_input_kernel.type(dtype)
         net_input_kernel.requires_grad = False
 
         # initilization inputs
@@ -206,8 +211,8 @@ for epoch in range(opt.num_epochs):
             kernel_l6 = []
 
             for j, img in enumerate(rgb):
-                out_x.append(net(net_input, weights=dip_weights[j]))
-                out_k = net_kernel(net_input_kernel, fcn_weights[j])
+                out_x.append(net(net_input[j], weights=dip_weights[j]))
+                out_k = net_kernel(net_input_kernel[j], fcn_weights[j])
                 out_k_m.append(
                     out_k.view(-1, 1, opt.kernel_size[0], opt.kernel_size[1]))
                 kernel_l1.append(torch.norm(
@@ -299,7 +304,7 @@ for epoch in range(opt.num_epochs):
     if epoch % opt.eval_freq == 0:
         start = time.time()
         to_log = evaluate_hnet(opt, hyper_dip, hyper_fcn, net,
-                               net_kernel, n_k, opt.eval_num_iter, "results/levin/hnet_evaluation/", opt.run_original)
+                               net_kernel, n_k, opt.eval_num_iter, opt.eval_data_path, opt.run_original, opt.ignore_kernel)
         end = time.time()
         to_log["Evaluation time"] = end - start
         wandb.log(to_log)
