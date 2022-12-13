@@ -136,9 +136,9 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         to_log = {}
 
         for j, img in enumerate(rgb):
-            all_psnr = np.empty(iterations)
-            all_ssim = np.empty(iterations)
-            all_mse = np.empty(iterations)
+            all_psnr = np.zeros(iterations)
+            all_ssim = np.zeros(iterations)
+            all_mse = np.zeros(iterations)
 
             # train SelfDeblur
             for step in tqdm(range(iterations)):
@@ -257,12 +257,13 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
                 to_log['kernel_from_' + imgname +
                        '_final.png'] = wandb.Image(out_k_np, mode="L")
 
+
         all_mse /= len(rgb)
-        all_mse = np.putmask(all_mse, all_mse > 10^10, 1)
+        np.putmask(all_mse, all_mse > 10^10, 1)
         all_psnr /= len(rgb)
-        all_psnr = np.putmask(all_psnr, all_psnr > 10^10, 1)
+        np.putmask(all_psnr, all_psnr > 10^10, 1)
         all_ssim /= len(rgb)
-        all_ssim = np.putmask(all_ssim, all_ssim > 10^10, 1)
+        np.putmask(all_ssim, all_ssim > 10^10, 1)
 
         final_psnr_average = psnr_total / len(rgb)
         final_ssim_average = ssim_total / len(rgb)
@@ -272,10 +273,10 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         to_log['final_ssim_average'] = final_ssim_average
         to_log['final_mse_average'] = final_mse_average
 
-        for i in range(0, 5000, 1000):
-            to_log[f'psnr_average_{i}'] = all_psnr[i]
-            to_log[f'ssim_average_{i}'] = all_ssim[i]
-            to_log[f'mse_average_{i}'] = all_mse[i]
+        for k in range(0, iterations, 1000):
+            to_log[f'psnr_average_{i}'] = all_psnr[k]
+            to_log[f'ssim_average_{i}'] = all_ssim[k]
+            to_log[f'mse_average_{i}'] = all_mse[k]
 
         plt.figure()
         plt.yscale('log')
@@ -370,6 +371,6 @@ KERNEL_LR = 0.01
 # hyper_fcn = HyperNetwork(net_kernel, dtype=dtype)
 # hyper_fcn = hyper_fcn.type(dtype)
 
-# to_log = evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, 1000, "results/levin/hnet_evaluation/test/")
+# to_log = evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, 1, "results/levin/hnet_evaluation/test/")
 # run = wandb.init(project="EECS225BProject", entity="cs182rlproject")
 # wandb.log(to_log)
