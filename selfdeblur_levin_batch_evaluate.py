@@ -30,7 +30,7 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
     os.makedirs(validation_save_path, exist_ok=True)
     INPUT = 'noise'
     reg_noise_std = 0.001
-    imgs_to_track = [0]#[0, 9, 18, 27]
+    imgs_to_track = [0, 9, 18, 27]
 
     if torch.cuda.is_available():
         torch.backends.cudnn.enabled = True
