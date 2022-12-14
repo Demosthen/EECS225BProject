@@ -26,7 +26,7 @@ from statistics import psnr, psnr_tensor, ssim, psnr_color
 
 def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, validation_save_path, run_original=False, ignore_kernel=True):
     input_depth = 8
-    validation_data_path = "datasets/test_data_loader/"
+    validation_data_path = "datasets/gopro/"
     os.makedirs(validation_save_path, exist_ok=True)
     INPUT = 'noise'
     reg_noise_std = 0.001
