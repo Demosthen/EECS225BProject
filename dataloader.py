@@ -51,7 +51,7 @@ def make_dataset_gopro(root: str, compare_func) -> list:
             gt_path = os.path.join(root, gt_dir, gt_folder, fname)
             item = (rgb_path, gt_path)
             dataset.append(item)
-        if len(dataset) > 1000:
+        if len(dataset) > 300:
             break
     return dataset
 
