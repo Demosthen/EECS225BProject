@@ -115,7 +115,7 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         for j, (img, imgname) in enumerate(zip(rgb, rgb_path)):
             if j not in imgs_to_track:
                 continue
-            if not run_original and not ignore_kernel:
+            if run_original or ignore_kernel:
                 if imgname.find('kernel1') != -1:
                     opt.kernel_size = [17, 17]
                 if imgname.find('kernel2') != -1:
