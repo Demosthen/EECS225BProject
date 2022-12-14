@@ -115,22 +115,23 @@ def evaluate_hnet(opt, hyper_dip, hyper_fcn, net, net_kernel, n_k, iterations, v
         for j, (img, imgname) in enumerate(zip(rgb, rgb_path)):
             if j not in imgs_to_track:
                 continue
-            if imgname.find('kernel1') != -1:
-                opt.kernel_size = [17, 17]
-            if imgname.find('kernel2') != -1:
-                opt.kernel_size = [15, 15]
-            if imgname.find('kernel3') != -1:
-                opt.kernel_size = [13, 13]
-            if imgname.find('kernel4') != -1:
-                opt.kernel_size = [27, 27]
-            if imgname.find('kernel5') != -1:
-                opt.kernel_size = [11, 11]
-            if imgname.find('kernel6') != -1:
-                opt.kernel_size = [19, 19]
-            if imgname.find('kernel7') != -1:
-                opt.kernel_size = [21, 21]
-            if imgname.find('kernel8') != -1:
-                opt.kernel_size = [21, 21]
+            if not run_original and not ignore_kernel:
+                if imgname.find('kernel1') != -1:
+                    opt.kernel_size = [17, 17]
+                if imgname.find('kernel2') != -1:
+                    opt.kernel_size = [15, 15]
+                if imgname.find('kernel3') != -1:
+                    opt.kernel_size = [13, 13]
+                if imgname.find('kernel4') != -1:
+                    opt.kernel_size = [27, 27]
+                if imgname.find('kernel5') != -1:
+                    opt.kernel_size = [11, 11]
+                if imgname.find('kernel6') != -1:
+                    opt.kernel_size = [19, 19]
+                if imgname.find('kernel7') != -1:
+                    opt.kernel_size = [21, 21]
+                if imgname.find('kernel8') != -1:
+                    opt.kernel_size = [21, 21]
 
             padh, padw = opt.kernel_size[0]-1, opt.kernel_size[1]-1
             opt.img_size[0], opt.img_size[1] = img_size[2]+padh, img_size[3]+padw
